@@ -285,3 +285,9 @@ details summary { cursor: pointer; font-weight: 700; }
 /* ===== Drag & Drop Aufstellung ===== */
 .drag-ghost { position: fixed; z-index: 9999; pointer-events: none; background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; transform: translate(-50%, -50%); box-shadow: 0 4px 14px rgba(0,0,0,.4); white-space: nowrap; }
 .slot.drop-target { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ===== Trikot-Avatare ===== */
+.jersey { width: 28px; height: 28px; flex: 0 0 auto; display: inline-block; vertical-align: middle; }
+.jersey-sm { width: 20px; height: 20px; }
+.jersey-lg { width: 52px; height: 52px; }
+.player-main, .pick-row, .card.row, .chip, .stat-row { align-items: center; }

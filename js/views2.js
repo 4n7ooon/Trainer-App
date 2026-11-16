@@ -63,7 +63,7 @@ Routes['stats'] = function (app) {
     var total = r.s11 + r.bank;
     var pct = total ? Math.round(r.s11 / total * 100) + '%' : '–';
     var att = attStats(r.p);
-    html += '<div class="stat-row row"><span class="grow"><b>' + esc(r.p.name) + '</b>' +
+    html += '<div class="stat-row row"><span class="grow">' + jersey(r.p, 'jersey-sm') + ' <b>' + esc(r.p.name) + '</b>' +
       (r.p.trikotNr ? ' <span class="muted small">#' + esc(r.p.trikotNr) + '</span>' : '') +
       (att.pct !== null ? ' <span class="muted small">· ' + att.there + '/' + att.done + ' T' + '</span>' : '') + '</span>' +
       '<span' + (r.tor ? ' class="hot"' : '') + '>' + r.tor + '</span>' +
@@ -89,7 +89,7 @@ Routes['spieler'] = function (app) {
     var avg = skillAvg(p);
     var teams = (p.teamIds || []).map(function (tid) { var t = teamById(tid); return t ? esc(t.name) : ''; }).filter(Boolean).join('/');
     html += '<button class="card row spread" data-action="pl.open" data-id="' + p.id + '">' +
-      '<div class="row gap"><span class="nr-badge">' + esc(p.trikotNr || '–') + '</span>' +
+      '<div class="row gap">' + jersey(p) +
       '<div><div class="strong">' + esc(p.name) + '</div>' +
       '<div class="small muted">' + (p.positions || []).join(', ') + (teams ? ' · ' + teams : '') + (p.fuss ? ' · Fuß: ' + esc(p.fuss) : '') + '</div></div></div>' +
       '<div class="row gap">' +
@@ -140,7 +140,7 @@ function playerDetail(id) {
   if (!p) return;
   var st = einsatzStats(p);
   var att = attStats(p);
-  var html = '<h3>' + esc(p.name) + (p.trikotNr ? ' <span class="nr-badge">' + esc(p.trikotNr) + '</span>' : '') + '</h3>';
+  var html = '<div class="row gap">' + jersey(p, 'jersey-lg') + '<h3 style="margin:0">' + esc(p.name) + '</h3></div>';
   html += '<div class="stat-grid">' +
     '<div class="stat"><div class="stat-v">' + st.spiele + '</div><div class="stat-l">Spiele</div></div>' +
     '<div class="stat"><div class="stat-v">' + st.goals + '</div><div class="stat-l">Tore</div></div>' +
@@ -603,7 +603,7 @@ Actions['taktik.slot'] = function (el) {
     var fit = (p.positions || []).indexOf(family) >= 0;
     var used = window._taktikSlots.some(function (s, j) { return s.playerId === p.id && j !== i; });
     html += '<button class="pick-row' + (fit ? ' fit' : '') + '" data-action="taktik.assign" data-i="' + i + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + (used ? ' <span class="small muted">(bereits aufgestellt)</span>' : '') + '</span>' +
+      jersey(p) + '<span>' + esc(p.name) + (used ? ' <span class="small muted">(bereits aufgestellt)</span>' : '') + '</span>' +
       '<span class="small muted">' + (p.positions || []).join(',') + ' · ' + skillAvg(p).toFixed(1) + '</span></button>';
   });
   html += '</div>';
@@ -721,7 +721,7 @@ function teamDetail(id) {
   S.players.slice().sort(byName).forEach(function (p) {
     var on = (p.teamIds || []).indexOf(t.id) >= 0;
     html += '<button class="pick-row' + (on ? ' fit' : '') + '" data-action="team.togglePlayer" data-t="' + t.id + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+      jersey(p) + '<span>' + esc(p.name) + '</span>' +
       '<span>' + (on ? '✓' : '+') + '</span></button>';
   });
   html += '</div>';

@@ -90,7 +90,7 @@ function matchSquadSheet(m) {
   pool.forEach(function (p) {
     var inSquad = (m.squad || []).indexOf(p.id) >= 0;
     html += '<button class="pick-row' + (inSquad ? ' fit' : '') + '" data-action="match.toggleSquad" data-id="' + m.id + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+      jersey(p) + '<span>' + esc(p.name) + '</span>' +
       '<span class="small muted">' + (inSquad ? '✓ dabei' : '+') + '</span></button>';
   });
   html += '</div><div class="spacer"></div>' +
@@ -179,15 +179,14 @@ function matchSetup(m) {
     '<h3 class="sub">⭐ Startaufstellung (' + starters + ')</h3>' +
     (starters ? m.lineup.filter(function (s) { return s.playerId; }).map(function (s) {
       var p = playerById(s.playerId);
-      return '<div class="card row spread"><div><span class="strong">' + esc(p.name) + '</span>' +
-        (p.trikotNr ? ' <span class="muted small">#' + esc(p.trikotNr) + '</span>' : '') +
-        ' <span class="pts-badge">' + esc(s.pos) + '</span></div>' +
+      return '<div class="card row spread"><div class="row gap">' + jersey(p) + '<div><span class="strong">' + esc(p.name) + '</span>' +
+        ' <span class="pts-badge">' + esc(s.pos) + '</span></div></div>' +
         '<button class="icon-btn" data-action="match.removeStarter" data-id="' + m.id + '" data-pid="' + p.id + '">✕</button></div>';
     }).join('') : '<p class="muted small">Tippe Positionen auf dem Platz an, um Spieler zuzuordnen.</p>') +
     '<h3 class="sub">🪑 Bank (' + bench.length + ')</h3><div class="pick-list">' +
     (bench.length ? bench.map(function (p) {
       return '<button class="pick-row" data-action="match.addStarter" data-id="' + m.id + '" data-pid="' + p.id + '" data-dragctx="match" data-drag="bench">' +
-        '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+        jersey(p) + '<span>' + esc(p.name) + '</span>' +
         '<span class="small muted">' + (p.positions || []).join(',') + ' +</span></button>';
     }).join('') : '<p class="muted small">Alle Kader-Spieler stehen in der Startaufstellung.</p>') +
     '</div><div class="spacer"></div>' +
@@ -227,7 +226,7 @@ Actions['match.slot'] = function (el) {
     var fit = (p.positions || []).indexOf(family) >= 0;
     var used = m.lineup.some(function (s, j) { return s.playerId === p.id && j !== i; });
     html += '<button class="pick-row' + (fit ? ' fit' : '') + '" data-action="match.assign" data-id="' + m.id + '" data-i="' + i + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + (used ? ' <span class="small muted">(bereits aufgestellt)</span>' : '') + '</span>' +
+      jersey(p) + '<span>' + esc(p.name) + (used ? ' <span class="small muted">(bereits aufgestellt)</span>' : '') + '</span>' +
       '<span class="small muted">' + (p.positions || []).join(',') + '</span></button>';
   });
   html += '</div>';
@@ -412,10 +411,10 @@ function renderLive(m) {
   if (!(m.events || []).length) html += '<p class="muted small">Noch keine Ereignisse.</p>';
   html += '</div>' +
     '<div class="spacer"></div><details class="card"><summary>⭐ Aufstellung (' + onPitchPlayers(m).length + ' auf dem Platz)</summary><div class="chip-row">' +
-    onPitchPlayers(m).map(function (p) { return '<span class="chip active small-chip">' + esc(p.name) + (p.trikotNr ? ' #' + esc(p.trikotNr) : '') + '</span>'; }).join('') +
+    onPitchPlayers(m).map(function (p) { return '<span class="chip active small-chip">' + jersey(p, 'jersey-sm') + ' ' + esc(p.name.split(' ')[0]) + '</span>'; }).join('') +
     '</div></details>' +
     '<details class="card"><summary>🪑 Bank (' + benchPlayers(m).length + ')</summary><div class="chip-row">' +
-    benchPlayers(m).map(function (p) { return '<span class="chip small-chip">' + esc(p.name) + (p.trikotNr ? ' #' + esc(p.trikotNr) : '') + '</span>'; }).join('') +
+    benchPlayers(m).map(function (p) { return '<span class="chip small-chip">' + jersey(p, 'jersey-sm') + ' ' + esc(p.name.split(' ')[0]) + '</span>'; }).join('') +
     '</div></details>';
   app.innerHTML = html;
   renderHeader('spieltag');
@@ -486,7 +485,7 @@ Actions['live.goal'] = function (el) {
   openSheet('<h3>⚽ Wer hat das Tor geschossen?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.goalScorer" data-id="' + m.id + '" data-pid="' + p.id + '">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b>' + (p.trikotNr ? '<span class="small muted">#' + esc(p.trikotNr) + '</span>' : '') + '</button>';
+        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b>' + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.goalScorer'] = function (el) {
@@ -497,7 +496,7 @@ Actions['live.goalScorer'] = function (el) {
     '<button class="grid-pick-btn none" data-action="live.goalSave" data-id="' + m.id + '" data-pid="' + pid + '">Kein Assist</button>' +
     on.filter(function (p) { return p.id !== pid; }).map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.goalSave" data-id="' + m.id + '" data-pid="' + pid + '" data-a="' + p.id + '">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b>' + (p.trikotNr ? '<span class="small muted">#' + esc(p.trikotNr) + '</span>' : '') + '</button>';
+        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b>' + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.goalSave'] = function (el) {
@@ -518,7 +517,7 @@ Actions['live.gelb'] = function (el) {
   openSheet('<h3>🟨 Gelbe Karte: wer?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.cardSave" data-id="' + m.id + '" data-pid="' + p.id + '" data-k="gelb">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
     }).join('') + '</div>');
 };
 Actions['live.rot'] = function (el) {
@@ -527,7 +526,7 @@ Actions['live.rot'] = function (el) {
   openSheet('<h3>🟥 Rote Karte: wer?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.cardSave" data-id="' + m.id + '" data-pid="' + p.id + '" data-k="rot">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
     }).join('') + '</div>');
 };
 Actions['live.cardSave'] = function (el) {

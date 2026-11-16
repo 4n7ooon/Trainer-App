@@ -31,7 +31,7 @@ function strafenPunkteHTML() {
     var box = pts >= th;
     html += '<div class="player-row card' + (box ? ' box-alert' : '') + '">' +
       '<button class="player-main" data-action="strafen.player" data-id="' + p.id + '">' +
-      '<div class="player-line"><span class="strong">' + esc(p.name) + '</span>' +
+      '<div class="player-line">' + jersey(p) + '<span class="strong">' + esc(p.name) + '</span>' +
       '<span class="pts-badge' + (pts >= th ? ' hot' : pts < 0 ? ' good' : '') + '">' + pts + ' p</span></div>' +
       '<div class="bar"><div class="bar-fill' + (box ? ' hot' : '') + '" style="width:' + pct + '%"></div></div>' +
       '<div class="small muted">' + (box ? '📦 Kasten fällig!' : 'Kasten ab ' + th + ' p') + '</div>' +
@@ -249,7 +249,7 @@ Routes['trikots'] = function (app) {
   ids.map(function (id) { return playerById(id); }).sort(byName).forEach(function (p) {
     html += '<div class="card row spread trikot-row' + (p.trikotHad ? ' done' : '') + '">' +
       '<label class="check big"><input type="checkbox" data-action="trikot.check" data-id="' + p.id + '"' + (p.trikotHad ? ' checked' : '') + '>' +
-      '<span class="strong">' + esc(p.name) + '</span></label>' +
+      jersey(p) + '<span class="strong">' + esc(p.name) + '</span></label>' +
       '<div class="row gap">' +
       (p.trikotHad ? '<span class="pts-badge good">✓ gehabt</span>' : '') +
       '<button class="icon-btn" data-action="trikot.remove" data-id="' + p.id + '">✕</button></div></div>';
@@ -448,7 +448,7 @@ function attSheet(id) {
   S.players.slice().sort(byName).forEach(function (p) {
     var st = u.att[p.id];
     html += '<button class="pick-row' + (st === true ? ' fit' : '') + '" data-action="unit.attToggle" data-id="' + u.id + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+      jersey(p) + '<span>' + esc(p.name) + '</span>' +
       '<span class="small muted">' + (st === true ? '✓ da' : st === false ? '✗ fehlt' : '– offen') + '</span></button>';
   });
   html += '</div><div class="spacer"></div>' +

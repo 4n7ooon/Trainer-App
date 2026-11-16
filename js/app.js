@@ -11,6 +11,17 @@ function esc(s) {
   });
 }
 function fmtPts(n) { return n + ' p'; }
+/* Trikot-Avatar: Shirt in Vereinsfarbe mit Rückennummer (falls gesetzt) */
+function jersey(p, cls) {
+  var c1 = (S && S.settings.clubColors && S.settings.clubColors.primary) || '#22c55e';
+  var nr = (p && p.trikotNr) ? String(p.trikotNr) : '';
+  return '<svg class="jersey ' + (cls || '') + '" viewBox="0 0 64 64" aria-hidden="true">' +
+    '<path d="M23 3 L27 7 Q32 11 37 7 L41 3 L48 6 L61 15 L53 28 L46 24 L46 61 L18 61 L18 24 L11 28 L3 15 L16 6 Z" ' +
+    'fill="' + c1 + '" stroke="rgba(0,0,0,.4)" stroke-width="2.5" stroke-linejoin="round"/>' +
+    '<path d="M23 3 L27 7 Q32 11 37 7 L41 3" fill="none" stroke="rgba(0,0,0,.4)" stroke-width="2.5"/>' +
+    (nr ? '<text x="32" y="46" text-anchor="middle" font-size="24" font-weight="800" fill="#fff" font-family="system-ui,-apple-system,sans-serif">' + esc(nr) + '</text>' : '') +
+    '</svg>';
+}
 function parsePts(str) {
   if (str === undefined || str === null) return null;
   var v = String(str).trim().replace(',', '.').replace('p', '').replace(/\s/g, '');
