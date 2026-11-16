@@ -22,6 +22,17 @@ function teamById(id) { return S.teams.find(function (t) { return t.id === id; }
 function catById(id) { return S.catalog.find(function (c) { return c.id === id; }) || null; }
 function byName(a, b) { return a.name.localeCompare(b.name, 'de'); }
 function todayISO() { return new Date().toISOString().slice(0, 10); }
+/* Anwesenheit: aus Trainings-Einheiten berechnet (u.att = { playerId: true/false }) */
+function attStats(p) {
+  var done = 0, there = 0, seq = [];
+  var units = S.training.units.slice().sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+  units.forEach(function (u) {
+    if (!u.att || u.att[p.id] === undefined) return;
+    done++;
+    if (u.att[p.id]) { there++; seq.push(1); } else seq.push(0);
+  });
+  return { done: done, there: there, pct: done ? Math.round(there / done * 100) : null, seq: seq };
+}
 function fmtDate(iso) {
   if (!iso) return '';
   var d = new Date(iso + 'T12:00:00');
@@ -115,7 +126,7 @@ function renderHeader(route) {
   var titles = {
     dashboard: 'Dashboard', strafen: 'Strafenkatalog', trikots: 'Trikot-Liste',
     training: 'Trainingsplanung', spieler: 'Spieler-Datenbank', taktik: 'Taktik-Coach',
-    verein: 'Vereins-Datenbank', spieltag: 'Spieltag', settings: 'Einstellungen'
+    verein: 'Vereins-Datenbank', spieltag: 'Spieltag', settings: 'Einstellungen', stats: 'Statistiken'
   };
   var title = titles[route] || (route.indexOf('custom-') === 0 ? 'Bereich' : 'Trainer-App');
   if (route.indexOf('custom-') === 0) {
@@ -141,6 +152,7 @@ var DASH_TILES = [
   { route: 'taktik', icon: '🧠', name: 'Taktik-Coach', desc: 'Aufstellung & KI-Chat' },
   { route: 'training', icon: '🎯', name: 'Trainingsplanung', desc: 'Einheiten & Übungsarchiv' },
   { route: 'spieler', icon: '👥', name: 'Spieler-Datenbank', desc: 'Bewertungen & Profile' },
+  { route: 'stats', icon: '📊', name: 'Statistiken', desc: 'Tore, Karten & S11-Quote' },
   { route: 'trikots', icon: '👕', name: 'Trikot-Liste', desc: 'Wer muss mitnehmen?' },
   { route: 'verein', icon: '🏟️', name: 'Vereins-Datenbank', desc: 'Mannschaften & Verein' }
 ];
@@ -344,3 +356,18 @@ document.addEventListener('click', function (e) {
 S = DB.load();
 applyTheme();
 render();
+
+/* ---------- Offline (Service Worker) ---------- */
+if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+  navigator.serviceWorker.register('sw.js').then(function (reg) {
+    reg.addEventListener('updatefound', function () {
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function () {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          toast('🔄 Neue Version verfügbar – App schließen & neu öffnen');
+        }
+      });
+    });
+  }).catch(function () { /* Offline bleibt trotzdem erhalten */ });
+}

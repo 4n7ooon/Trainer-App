@@ -25,6 +25,58 @@ function einsatzStats(p) {
   };
 }
 
+/* ================= STATISTIKEN ================= */
+var statsSort = 's11';
+function playerSeasonStats() {
+  var map = {};
+  S.players.forEach(function (p) { map[p.id] = { p: p, tor: 0, assist: 0, gelb: 0, rot: 0, s11: 0, bank: 0 }; });
+  S.matches.forEach(function (m) {
+    if (m.status === 'setup') return;
+    (m.events || []).forEach(function (ev) {
+      if (ev.type === 'tor') {
+        if (map[ev.playerId]) map[ev.playerId].tor++;
+        if (ev.assistId && map[ev.assistId]) map[ev.assistId].assist++;
+      }
+      if ((ev.type === 'gelb' || ev.type === 'rot') && map[ev.playerId]) map[ev.playerId][ev.type]++;
+    });
+    var starters = (m.lineup || []).filter(function (s) { return s.playerId; }).map(function (s) { return s.playerId; });
+    starters.forEach(function (id) { if (map[id]) map[id].s11++; });
+    (m.squad || []).forEach(function (id) { if (map[id] && starters.indexOf(id) < 0) map[id].bank++; });
+  });
+  return Object.keys(map).map(function (k) { return map[k]; });
+}
+Routes['stats'] = function (app) {
+  var rows = playerSeasonStats();
+  var teams = S.teams.map(function (t) { return esc(t.name); }).join(' / ');
+  var games = S.matches.filter(function (m) { return m.status !== 'setup'; }).length;
+  var html = '<div class="card hint-card">📊 Saison über ' + games + (games === 1 ? ' Spiel' : ' Spiele') + (teams ? ' · ' + teams : '') + '</div>';
+  html += '<div class="chip-row">' +
+    [['s11', 'S11'], ['tor', '⚽ Tore'], ['assist', '🅰️ Assists'], ['gelb', '🟨 Gelb'], ['rot', '🟥 Rot'], ['name', 'Name']].map(function (o) {
+      return '<button class="chip' + (statsSort === o[0] ? ' active' : '') + '" data-action="stats.sort" data-k="' + o[0] + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
+  rows.sort(function (a, b) {
+    if (statsSort === 'name') return byName(a.p, b.p);
+    return b[statsSort] - a[statsSort] || byName(a.p, b.p);
+  });
+  html += '<div class="stat-head row"><span class="grow">Spieler</span><span>Tor</span><span>Ass</span><span>🟨</span><span>🟥</span><span>S11</span><span>Bank</span><span>S11%</span></div>';
+  rows.forEach(function (r) {
+    var total = r.s11 + r.bank;
+    var pct = total ? Math.round(r.s11 / total * 100) + '%' : '–';
+    var att = attStats(r.p);
+    html += '<div class="stat-row row"><span class="grow"><b>' + esc(r.p.name) + '</b>' +
+      (r.p.trikotNr ? ' <span class="muted small">#' + esc(r.p.trikotNr) + '</span>' : '') +
+      (att.pct !== null ? ' <span class="muted small">· ' + att.there + '/' + att.done + ' T' + '</span>' : '') + '</span>' +
+      '<span' + (r.tor ? ' class="hot"' : '') + '>' + r.tor + '</span>' +
+      '<span' + (r.assist ? ' class="hot"' : '') + '>' + r.assist + '</span>' +
+      '<span' + (r.gelb ? ' class="warn"' : '') + '>' + r.gelb + '</span>' +
+      '<span' + (r.rot ? ' class="warn"' : '') + '>' + r.rot + '</span>' +
+      '<span>' + r.s11 + '</span><span>' + r.bank + '</span><span class="good">' + pct + '</span></div>';
+  });
+  if (!games) html += '<p class="muted">Noch keine Spiele – hier erscheinen Tore, Karten und S11-Quote, sobald du Spiele erfasst hast.</p>';
+  app.innerHTML = html;
+};
+Actions['stats.sort'] = function (el) { statsSort = el.dataset.k; render(); };
+
 /* ================= SPIELER-DATENBANK ================= */
 Routes['spieler'] = function (app) {
   var html = '<div class="row gap wrap">' +
@@ -87,6 +139,7 @@ function playerDetail(id) {
   var p = playerById(id);
   if (!p) return;
   var st = einsatzStats(p);
+  var att = attStats(p);
   var html = '<h3>' + esc(p.name) + (p.trikotNr ? ' <span class="nr-badge">' + esc(p.trikotNr) + '</span>' : '') + '</h3>';
   html += '<div class="stat-grid">' +
     '<div class="stat"><div class="stat-v">' + st.spiele + '</div><div class="stat-l">Spiele</div></div>' +
@@ -94,6 +147,7 @@ function playerDetail(id) {
     '<div class="stat"><div class="stat-v">' + st.assists + '</div><div class="stat-l">Assists</div></div>' +
     '<div class="stat"><div class="stat-v">' + st.minutes + '</div><div class="stat-l">Minuten</div></div>' +
     '<div class="stat"><div class="stat-v">' + (st.note ? st.note.toFixed(1) : '–') + '</div><div class="stat-l">Spielnote</div></div>' +
+    '<div class="stat"><div class="stat-v">' + (att.pct !== null ? att.pct + '%' : '–') + '</div><div class="stat-l">Anwesenheit</div></div>' +
     '<div class="stat"><div class="stat-v">' + p.trainingCount + '</div><div class="stat-l">Trainings</div></div></div>';
 
   html += '<h3 class="sub">Stammdaten</h3>' +
@@ -127,7 +181,8 @@ function playerDetail(id) {
     '<label>Einsetzbarkeit</label><input id="pd-eins" value="' + esc(p.attrs.einsetzbarkeit) + '" placeholder="z. B. überall, nur Außen, nicht TW">' +
     '<label>Notizen</label><textarea id="pd-note" rows="2">' + esc(p.note) + '</textarea>';
 
-  html += '<h3 class="sub">Training</h3>' +
+  html += '<h3 class="sub">📈 Entwicklung</h3>' + entwicklungHTML(p) +
+    '<h3 class="sub">Training</h3>' +
     '<div class="row gap"><button class="btn ghost grow" data-action="pl.trainPlus" data-id="' + p.id + '">✓ Beim Training dabei (+1)</button>' +
     '<button class="btn ghost grow" data-action="pl.trainRate" data-id="' + p.id + '">⭐ Trainingsleistung bewerten</button></div>' +
     (p.trainingsLeistung.length ? '<div class="small muted">Letzte Bewertungen: ' + p.trainingsLeistung.slice(-5).map(function (r) { return r + '★'; }).join(', ') + '</div>' : '');
@@ -148,6 +203,73 @@ function playerDetail(id) {
 
   openSheet(html);
 }
+/* Entwicklung: Trends aus Anwesenheit, Noten und Startelf-Historie */
+function entwicklungHTML(p) {
+  var lines = [];
+  /* 1. Trainingsbeteiligung */
+  var att = attStats(p);
+  if (att.done) {
+    var last5 = att.seq.slice(-5);
+    var lastSum = last5.reduce(function (a, b) { return a + b; }, 0);
+    var older = att.seq.slice(0, -5);
+    var olderSum = older.reduce(function (a, b) { return a + b; }, 0);
+    var lastPct = Math.round(lastSum / last5.length * 100);
+    var arrow = older.length ? (lastPct > Math.round(olderSum / older.length * 100) + 5 ? ' ↗' : lastPct < Math.round(olderSum / older.length * 100) - 5 ? ' ↘' : ' →') : '';
+    lines.push('<div class="card row spread"><span>Anwesenheit</span><span class="pts-badge good">' + att.there + '/' + att.done + ' · ' + att.pct + '%' + arrow + '</span></div>');
+    if (att.seq.length >= 3) {
+      lines.push('<div class="small muted">Letzte Einheiten: ' + last5.map(function (v) { return v ? '✓' : '✗'; }).join(' ') + '</div>');
+    }
+  } else {
+    lines.push('<div class="small muted">Noch keine Anwesenheit erfasst (in der Trainingsplanung pro Einheit möglich).</div>');
+  }
+  /* 2. Spielnoten-Trend (1 = weltklasse, 5 = schwach) */
+  var notes = (p.einsaetze || []).filter(function (e) { return e.rating > 0; }).map(function (e) { return e.rating; });
+  if (notes.length >= 2) {
+    var half = Math.floor(notes.length / 2);
+    var frueh = notes.slice(0, half).reduce(function (a, b) { return a + b; }, 0) / half;
+    var spaet = notes.slice(half).reduce(function (a, b) { return a + b; }, 0) / (notes.length - half);
+    var d = frueh - spaet; /* positiv = neu besser (kleinere Note) */
+    var trend = d > 0.3 ? '↗ deutlich besser' : d > 0.05 ? '↗ leicht besser' : d < -0.3 ? '↘ nachgelassen' : d < -0.05 ? '↘ leicht schwächer' : '→ stabil';
+    lines.push('<div class="card row spread"><span>Spielnoten</span><span class="pts-badge">Ø ' + (notes.reduce(function (a, b) { return a + b; }, 0) / notes.length).toFixed(1) + ' · ' + trend + '</span></div>');
+  }
+  /* 3. Startelf / Bank-Verlauf (letzte Spiele) */
+  var games = S.matches.filter(function (m) { return m.status !== 'setup'; })
+    .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); })
+    .map(function (m) {
+      var starter = (m.lineup || []).some(function (s) { return s.playerId === p.id; });
+      var inSquad = (m.squad || []).indexOf(p.id) >= 0;
+      return starter ? 'S11' : inSquad ? 'Bank' : null;
+    })
+    .filter(Boolean);
+  if (games.length) {
+    var last = games.slice(-6);
+    var streak = 0;
+    for (var i = games.length - 1; i >= 0; i--) {
+      if (games[i] === games[games.length - 1]) streak++; else break;
+    }
+    var s11Count = games.filter(function (g) { return g === 'S11'; }).length;
+    var pct = Math.round(s11Count / games.length * 100);
+    var streakTxt = games[games.length - 1] === 'S11'
+      ? streak + '× S11 in Folge' + (streak >= 3 ? ' 🔥' : '')
+      : streak + '× Bank in Folge' + (streak >= 3 ? ' ⚠️' : '');
+    lines.push('<div class="card row spread"><span>S11-Quote</span><span class="pts-badge">' + s11Count + '/' + games.length + ' · ' + pct + '%</span></div>');
+    lines.push('<div class="small muted">Letzte Spiele: ' + last.map(function (g) { return g === 'S11' ? '<b>S11</b>' : 'Bank'; }).join(' · ') + '</div>');
+    lines.push('<div class="small">' + streakTxt + '</div>');
+  }
+  /* 4. Trainingsleistung-Trend */
+  var tl = p.trainingsLeistung || [];
+  if (tl.length >= 4) {
+    var h2 = Math.floor(tl.length / 2);
+    var f = tl.slice(0, h2).reduce(function (a, b) { return a + b; }, 0) / h2;
+    var s = tl.slice(h2).reduce(function (a, b) { return a + b; }, 0) / (tl.length - h2);
+    var dt = f - s; /* positiv = neu besser (kleinere Sterne = besser? nein: mehr Sterne = besser) */
+    var tt = dt > 0.3 ? '↗ steigend' : dt < -0.3 ? '↘ fallend' : '→ stabil';
+    lines.push('<div class="card row spread"><span>Trainingsleistung</span><span class="pts-badge">Ø ' + (tl.reduce(function (a, b) { return a + b; }, 0) / tl.length).toFixed(1) + '★ · ' + tt + '</span></div>');
+  }
+  if (!lines.length) return '<p class="muted small">Noch keine Daten – Entwicklung erscheint automatisch mit Trainings & Spielen.</p>';
+  return lines.join('');
+}
+
 Actions['pl.pos'] = function (el) {
   var p = playerById(el.dataset.id);
   p.positions = p.positions || [];

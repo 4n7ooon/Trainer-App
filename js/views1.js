@@ -392,7 +392,17 @@ function unitDetail(id) {
     }
   });
   html += '</div>';
-  html += '<div class="row gap wrap">' +
+  var att = u.att || {};
+  var attCount = Object.keys(att).filter(function (k) { return att[k]; }).length;
+  var attRecorded = Object.keys(att).length;
+  html += '<h3 class="sub">👥 Anwesenheit</h3>' +
+    (attRecorded
+      ? '<div class="card row spread"><span>' + attCount + ' von ' + attRecorded + ' erfassten dabei</span>' +
+        '<span class="pts-badge good">' + Math.round(attCount / attRecorded * 100) + '%</span></div>'
+      : '<p class="muted small">Noch nicht erfasst.</p>') +
+    '<button class="btn primary grow" data-action="unit.attendance" data-id="' + u.id + '">👥 Anwesenheit erfassen</button>' +
+    '<div class="spacer"></div>' +
+    '<div class="row gap wrap">' +
     '<button class="btn ghost grow" data-action="unit.addText" data-id="' + u.id + '">📝 Text</button>' +
     '<button class="btn ghost grow" data-action="unit.addMedia" data-id="' + u.id + '" data-k="image">📷 Bild</button>' +
     '<button class="btn ghost grow" data-action="unit.addMedia" data-id="' + u.id + '" data-k="video">🎬 Video</button>' +
@@ -411,6 +421,54 @@ function unitDetail(id) {
     });
   });
 }
+/* ----- Anwesenheit pro Einheit (1-Klick) ----- */
+Actions['unit.attendance'] = function (el) { attSheet(el.dataset.id); };
+function attSheet(id) {
+  var u = S.training.units.find(function (x) { return x.id === id; });
+  if (!u) return;
+  if (!u.att) u.att = {};
+  var html = '<h3>Anwesenheit · ' + esc(u.title) + '</h3>' +
+    '<p class="small muted">1 Tap pro Spieler: da / nicht da. Wird automatisch gespeichert und in Statistiken & Spieler-Datenbank übernommen.</p>' +
+    '<div class="row gap wrap">' +
+    '<button class="btn ghost small-btn grow" data-action="unit.attAll" data-id="' + u.id + '">Alle da</button>' +
+    '<button class="btn ghost small-btn grow" data-action="unit.attNone" data-id="' + u.id + '">Niemand da</button></div>' +
+    '<div class="spacer"></div><div class="pick-list">';
+  S.players.slice().sort(byName).forEach(function (p) {
+    var st = u.att[p.id];
+    html += '<button class="pick-row' + (st === true ? ' fit' : '') + '" data-action="unit.attToggle" data-id="' + u.id + '" data-pid="' + p.id + '">' +
+      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+      '<span class="small muted">' + (st === true ? '✓ da' : st === false ? '✗ fehlt' : '– offen') + '</span></button>';
+  });
+  html += '</div><div class="spacer"></div>' +
+    '<button class="btn primary grow" data-action="sheet.close">Fertig</button>';
+  openSheet(html);
+}
+Actions['unit.attToggle'] = function (el) {
+  var u = S.training.units.find(function (x) { return x.id === el.dataset.id; });
+  if (!u) return;
+  if (!u.att) u.att = {};
+  var pid = el.dataset.pid;
+  u.att[pid] = (u.att[pid] === true) ? false : true;
+  el.classList.toggle('fit', u.att[pid] === true);
+  var badge = el.querySelector('span:last-child');
+  if (badge) badge.textContent = u.att[pid] ? '✓ da' : '✗ fehlt';
+  save();
+};
+Actions['unit.attAll'] = function (el) {
+  var u = S.training.units.find(function (x) { return x.id === el.dataset.id; });
+  if (!u) return;
+  u.att = u.att || {};
+  S.players.forEach(function (p) { u.att[p.id] = true; });
+  save(); attSheet(u.id);
+};
+Actions['unit.attNone'] = function (el) {
+  var u = S.training.units.find(function (x) { return x.id === el.dataset.id; });
+  if (!u) return;
+  u.att = u.att || {};
+  S.players.forEach(function (p) { u.att[p.id] = false; });
+  save(); attSheet(u.id);
+};
+
 Actions['unit.delBlock'] = function (el) {
   var u = S.training.units.find(function (x) { return x.id === el.dataset.id; });
   u.blocks = u.blocks.filter(function (b) { return b.id !== el.dataset.b; });

@@ -6,9 +6,12 @@ Mobile Web-App für Jugend-Fußballtrainer – optimiert für den iPhone-Homescr
 - **Strafenkatalog** – reines Punkte-System (p), Pluspunkte, Kasten-Warnung ab 25 p, „Kasten mitgebracht" = −25 p, Verlauf, manuelle Korrektur & Zurücksetzen
 - **Spieltag** – Spiele anlegen, Live-Timer (Halbzeitlänge pro Spiel einstellbar), 1-Klick-Eingaben für Tor/Assist/Karten/Wechsel, automatische Übertragung der Einsatzminuten in die Spieler-Datenbank
 - **Taktik-Coach** – 11er & 9er Formationen (4-1-4-1, 3-4-2-1, 3-4-1-2, 4-2-3-1, 4-4-2, 4-3-3 + 9er-Systeme), Aufstellungen speichern/laden, KI-Aufstellung, Gegneranalyse & Taktik-Chat
-- **Trainingsplanung** – Einheiten mit Text/Bild/Video, Übungsarchiv mit Ordnern, Themen-Tags (z. B. „Aufbauspiel" über mehrere Einheiten), KI-Übungsempfehlungen
+- **Trainingsplanung** – Einheiten mit Text/Bild/Video, Übungsarchiv mit Ordnern, Themen-Tags (z. B. „Aufbauspiel" über mehrere Einheiten), **Anwesenheit pro Einheit (1-Klick)**, KI-Übungsempfehlungen
 - **Spieler-Datenbank** – Trikotnummern, Positionen, Können-Bewertungen (1–5), Körperdaten, Eigenschaften, Trainingsbeteiligung, Spielhistorie, KI-Analysen
-- **Trikot-Liste** – alphabetisch, abhakbar, automatisch „wer ist als nächstes dran"
+- **Trikot-Liste** – alphabetisch, abhakbar, Reset-Funktion, automatisch „wer ist als nächstes dran"
+- **Statistiken** – Tore, Assists, gelbe/rote Karten, Startelf-Einsätze (Anzahl + S11/Bank-Quote) pro Spieler, sortierbar
+- **Entwicklung** – Trends pro Spieler: Anwesenheit, Spielnoten, S11/Bank-Verlauf, Trainingsleistung
+- **Offline** – Service Worker: App funktioniert komplett ohne Netz; alle Daten liegen automatisch lokal (localStorage + IndexedDB)
 - **Vereins-Datenbank** – Mannschaften (C1/C2, beliebig erweiterbar/umbenennbar, 11er/9er), fluider Kader
 - **Eigene Bereiche** – im Dashboard beliebig viele eigene Kacheln erstellen
 

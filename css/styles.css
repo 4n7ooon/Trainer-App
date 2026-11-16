@@ -273,3 +273,11 @@ button.card { display: block; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 details summary { cursor: pointer; font-weight: 700; }
+
+/* ===== Statistiken-Bereich ===== */
+.stat-head { font-size: 11px; color: var(--muted); padding: 4px 8px; gap: 8px; text-align: center; }
+.stat-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; margin-bottom: 6px; gap: 8px; text-align: center; font-size: 14px; }
+.stat-row .grow { text-align: left; }
+.stat-row .hot { color: var(--accent); font-weight: 700; }
+.stat-row .warn { color: var(--warn); font-weight: 700; }
+.stat-row .good { color: var(--accent); }
