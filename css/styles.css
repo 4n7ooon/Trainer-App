@@ -204,7 +204,10 @@ button.card { display: block; }
   display: flex; flex-direction: column; align-items: center; gap: 1px;
   box-shadow: var(--shadow); z-index: 2;
 }
-.slot.filled { border: 2px solid var(--club1); background: var(--card2); }
+.slot.filled { border: none; background: transparent; box-shadow: none; padding: 0; gap: 2px; }
+.slot.filled .jersey { width: 46px; height: 46px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+.slot.filled .slot-pos { background: rgba(0,0,0,.55); color: #fff; padding: 0 6px; border-radius: 8px; font-size: 9px; line-height: 14px; }
+.slot.filled .slot-name { background: rgba(0,0,0,.55); color: #fff; padding: 1px 6px; border-radius: 8px; }
 .slot-pos { font-size: 10px; color: var(--muted); font-weight: 800; }
 .slot-name { font-size: 12px; font-weight: 800; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot-nr { font-size: 10px; color: var(--accent2); font-weight: 800; }

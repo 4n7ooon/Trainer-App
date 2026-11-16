@@ -542,12 +542,11 @@ Routes['taktik'] = function (app) {
   html += '<div class="pitch" id="pitch">';
   FORMATIONS[format][taktikFormation].forEach(function (slot, i) {
     var assigned = window._taktikSlots[i] && window._taktikSlots[i].playerId ? playerById(window._taktikSlots[i].playerId) : null;
-    var nr = assigned && assigned.trikotNr ? assigned.trikotNr : '';
     html += '<button class="slot' + (assigned ? ' filled' : '') + '" style="left:' + slot.x + '%;top:' + (100 - slot.y) + '%" ' +
       'data-action="taktik.slot" data-i="' + i + '" data-dragctx="taktik">' +
       '<span class="slot-pos">' + slot.pos + '</span>' +
+      (assigned ? jersey(assigned) : '') +
       '<span class="slot-name">' + (assigned ? esc(assigned.name.split(' ')[0]) : '+') + '</span>' +
-      (nr ? '<span class="slot-nr">' + esc(nr) + '</span>' : '') +
       '</button>';
   });
   html += '</div>';

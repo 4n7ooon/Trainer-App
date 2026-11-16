@@ -163,12 +163,11 @@ function matchSetup(m) {
     '<div class="pitch" id="pitch">';
   slots.forEach(function (slot, i) {
     var assigned = m.lineup[i] && m.lineup[i].playerId ? playerById(m.lineup[i].playerId) : null;
-    var nr = assigned && assigned.trikotNr ? assigned.trikotNr : '';
     html += '<button class="slot' + (assigned ? ' filled' : '') + '" style="left:' + slot.x + '%;top:' + (100 - slot.y) + '%" ' +
       'data-action="match.slot" data-id="' + m.id + '" data-i="' + i + '" data-dragctx="match">' +
       '<span class="slot-pos">' + slot.pos + '</span>' +
+      (assigned ? jersey(assigned) : '') +
       '<span class="slot-name">' + (assigned ? esc(assigned.name.split(' ')[0]) : '+') + '</span>' +
-      (nr ? '<span class="slot-nr">' + esc(nr) + '</span>' : '') +
       '</button>';
   });
   html += '</div>' +
