@@ -152,8 +152,8 @@ window.KI = (function () {
     }
     if (p.attrs.probleme) tips.push('Baustelle laut Notiz: ' + p.attrs.probleme + ' → 1:1-Hinweis geben, nicht vor der Gruppe.');
     if (p.attrs.staerken) tips.push('Einsetzen bei: ' + p.attrs.staerken);
-    if (pointsOf(p.cents) >= S.settings.boxThreshold) tips.push('Steht beim Strafenkatalog über der Kasten-Grenze – ruhig ansprechen, Motivation über Pluspunkte aufbauen.');
-    if (pointsOf(p.cents) < 0) tips.push('Sehr viele Pluspunkte gesammelt – öffentlich loben, das zieht die anderen mit.');
+    if (p.points >= S.settings.boxThreshold) tips.push('Steht beim Strafenkatalog über der Kasten-Grenze – ruhig ansprechen, Motivation über Pluspunkte aufbauen.');
+    if (p.points < 0) tips.push('Sehr viele Pluspunkte gesammelt – öffentlich loben, das zieht die anderen mit.');
     return tips;
   }
 
@@ -273,7 +273,7 @@ window.KI = (function () {
       return 'Belohnungsideen: „Spieler des Spiels" mit Kapitänsbinde, Trainings-Krone für die Woche, 10 Extra-Minuten Spielzeit, Pluspunkte im Strafenkatalog.\n' + tips.join('\n');
     }
     if (t.indexOf('kasten') >= 0 || t.indexOf('straf') >= 0) {
-      var box = S.players.filter(function (p) { return pointsOf(p.cents) >= S.settings.boxThreshold; }).map(function (p) { return p.name; });
+      var box = S.players.filter(function (p) { return p.points >= S.settings.boxThreshold; }).map(function (p) { return p.name; });
       return box.length ? 'Kasten fällig bei: ' + box.join(', ') : 'Aktuell steht niemand über ' + S.settings.boxThreshold + ' p.';
     }
     if (t.indexOf('tor') >= 0 && t.indexOf('torn') < 0) {

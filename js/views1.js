@@ -1,6 +1,6 @@
 /* Views: Strafenkatalog, Trikot-Liste, Trainingsplanung */
 
-/* ================= STRAFENKATALOG ================= */
+/* ================= STRAFENKATALOG (reine Punkte) ================= */
 var strafenTab = 'punkte';
 Routes['strafen'] = function (app) {
   var html = '<div class="seg">' +
@@ -23,10 +23,10 @@ function renderStrafenTab() {
 
 function strafenPunkteHTML() {
   var th = S.settings.boxThreshold;
-  var list = S.players.slice().sort(function (a, b) { return pointsOf(b.cents) - pointsOf(a.cents); });
+  var list = S.players.slice().sort(function (a, b) { return b.points - a.points; });
   var html = '<div class="row gap"><button class="btn ghost small-btn" data-action="strafen.assignAll">⚡ Strafe für ganze Mannschaft</button></div>';
   list.forEach(function (p) {
-    var pts = pointsOf(p.cents);
+    var pts = p.points;
     var pct = Math.max(0, Math.min(100, (pts / th) * 100));
     var box = pts >= th;
     html += '<div class="player-row card' + (box ? ' box-alert' : '') + '">' +
@@ -34,7 +34,7 @@ function strafenPunkteHTML() {
       '<div class="player-line"><span class="strong">' + esc(p.name) + '</span>' +
       '<span class="pts-badge' + (pts >= th ? ' hot' : pts < 0 ? ' good' : '') + '">' + pts + ' p</span></div>' +
       '<div class="bar"><div class="bar-fill' + (box ? ' hot' : '') + '" style="width:' + pct + '%"></div></div>' +
-      '<div class="small muted">' + fmtEuro(p.cents) + (box ? ' · 📦 Kasten fällig!' : '') + '</div>' +
+      '<div class="small muted">' + (box ? '📦 Kasten fällig!' : 'Kasten ab ' + th + ' p') + '</div>' +
       '</button>' +
       (box ? '<button class="btn box-btn" data-action="strafen.box" data-id="' + p.id + '">📦 Kasten mitgebracht</button>' : '') +
       '</div>';
@@ -44,68 +44,64 @@ function strafenPunkteHTML() {
 
 Actions['strafen.box'] = function (el) {
   var p = playerById(el.dataset.id);
-  confirmDlg(p.name + ' hat den Kasten mitgebracht. Es werden 25 p abgezogen (Pluspunkte bleiben erhalten).', function () {
-    p.cents -= 2500;
-    S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: '📦 Kasten mitgebracht', delta: -2500 });
+  confirmDlg(p.name + ' hat den Kasten mitgebracht. Es werden 25 p abgezogen.', function () {
+    p.points -= 25;
+    S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: '📦 Kasten mitgebracht', delta: -25, inPts: true });
     save(); render(); toast('Kasten verbucht ✓');
   });
 };
 
 Actions['strafen.player'] = function (el) {
   var p = playerById(el.dataset.id);
-  var pts = pointsOf(p.cents);
-  var html = '<h3>' + esc(p.name) + ' · ' + pts + ' p (' + fmtEuro(p.cents) + ')</h3>';
-  if (pts >= S.settings.boxThreshold) {
+  var html = '<h3>' + esc(p.name) + ' · ' + p.points + ' p</h3>';
+  if (p.points >= S.settings.boxThreshold) {
     html += '<button class="btn box-btn" data-action="strafen.box" data-id="' + p.id + '">📦 Kasten mitgebracht (−25 p)</button><div class="spacer"></div>';
   }
   html += '<h3 class="sub">Strafen</h3><div class="pick-list">';
   S.catalog.filter(function (c) { return c.type === 'strafe'; }).forEach(function (c) {
     html += '<button class="pick-row" data-action="strafen.apply" data-pid="' + p.id + '" data-cid="' + c.id + '">' +
-      '<span>' + esc(c.label) + '</span><span class="pts-badge">' + (c.custom ? 'Sachwert' : fmtEuro(c.cents)) + '</span></button>';
+      '<span>' + esc(c.label) + '</span><span class="pts-badge">+' + c.points + ' p</span></button>';
   });
   html += '</div><h3 class="sub">Pluspunkte</h3><div class="pick-list">';
   S.catalog.filter(function (c) { return c.type === 'plus'; }).forEach(function (c) {
     html += '<button class="pick-row plus" data-action="strafen.apply" data-pid="' + p.id + '" data-cid="' + c.id + '">' +
-      '<span>' + esc(c.label) + '</span><span class="pts-badge good">−' + fmtEuro(c.cents) + '</span></button>';
+      '<span>' + esc(c.label) + '</span><span class="pts-badge good">−' + c.points + ' p</span></button>';
   });
   html += '</div><h3 class="sub">Manuell</h3>' +
-    '<div class="row gap"><input id="man-euro" inputmode="decimal" placeholder="z. B. 12,30">' +
-    '<button class="btn primary" data-action="strafen.setEuro" data-pid="' + p.id + '">Setzen</button></div>' +
+    '<div class="row gap"><input id="man-pts" inputmode="numeric" placeholder="z. B. 12 oder -3">' +
+    '<button class="btn primary" data-action="strafen.setPoints" data-pid="' + p.id + '">Setzen</button></div>' +
     '<div class="spacer"></div>' +
-    '<div class="row gap"><button class="btn ghost grow" data-action="strafen.resetKeepPlus" data-pid="' + p.id + '">Strafen auf 0 (Pluspunkte bleiben)</button>' +
-    '<button class="btn danger grow" data-action="strafen.resetAll" data-pid="' + p.id + '">Alles auf 0</button></div>';
+    '<button class="btn danger grow" data-action="strafen.resetAll" data-pid="' + p.id + '">Auf 0 zurücksetzen</button>';
   openSheet(html);
 };
 
 Actions['strafen.apply'] = function (el) {
   var p = playerById(el.dataset.pid);
   var c = catById(el.dataset.cid);
-  var amount = c.cents;
   if (c.custom) {
-    openSheet('<h3>Sachwert festlegen</h3><p class="small muted">' + esc(c.label) + ' für ' + esc(p.name) + '</p>' +
-      '<input id="custom-euro" inputmode="decimal" placeholder="Betrag in €, z. B. 25">' +
+    openSheet('<h3>Punkte festlegen</h3><p class="small muted">' + esc(c.label) + ' für ' + esc(p.name) + '</p>' +
+      '<input id="custom-pts" inputmode="numeric" placeholder="Punkte, z. B. 15">' +
       '<button class="btn primary" data-action="strafen.applyCustom" data-pid="' + p.id + '" data-cid="' + c.id + '">Vergeben</button>');
     return;
   }
-  applyCatalog(p, c, amount);
+  applyCatalog(p, c, c.points);
 };
 Actions['strafen.applyCustom'] = function (el) {
   var p = playerById(el.dataset.pid);
   var c = catById(el.dataset.cid);
-  var amount = parseEuro(document.getElementById('custom-euro').value);
-  if (amount === null) { toast('Ungültiger Betrag'); return; }
+  var amount = parsePts(document.getElementById('custom-pts').value);
+  if (amount === null) { toast('Ungültige Zahl'); return; }
   applyCatalog(p, c, amount);
   closeSheet();
 };
 function applyCatalog(p, c, amount) {
   var delta = c.type === 'strafe' ? amount : -amount;
-  var before = pointsOf(p.cents);
-  p.cents += delta;
-  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: c.label, delta: delta, type: c.type });
+  var before = p.points;
+  p.points += delta;
+  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: c.label, delta: delta, inPts: true });
   save();
-  var pts = pointsOf(p.cents);
   closeSheet(); render();
-  if (pts >= S.settings.boxThreshold && before < S.settings.boxThreshold) {
+  if (p.points >= S.settings.boxThreshold && before < S.settings.boxThreshold) {
     setTimeout(function () {
       openSheet('<h3>📦 ' + esc(p.name) + ' hat ' + S.settings.boxThreshold + ' p erreicht!</h3>' +
         '<p>Mit dem nächsten Training muss ein Kasten Spezi mitgebracht werden.</p>' +
@@ -113,44 +109,38 @@ function applyCatalog(p, c, amount) {
         '<div class="spacer"></div><button class="btn ghost" data-action="sheet.close">Später</button>');
     }, 150);
   } else {
-    toast((c.type === 'strafe' ? '+' : '−') + fmtEuro(amount) + ' für ' + p.name);
+    toast((c.type === 'strafe' ? '+' : '−') + amount + ' p für ' + p.name);
   }
 }
-Actions['strafen.setEuro'] = function (el) {
+Actions['strafen.setPoints'] = function (el) {
   var p = playerById(el.dataset.pid);
-  var v = parseEuro(document.getElementById('man-euro').value);
-  if (v === null) { toast('Ungültiger Betrag'); return; }
-  var old = p.cents;
-  p.cents = v;
-  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: 'Manuelle Korrektur', delta: v - old });
+  var v = parsePts(document.getElementById('man-pts').value);
+  if (v === null) { toast('Ungültige Zahl'); return; }
+  var old = p.points;
+  p.points = v;
+  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: 'Manuelle Korrektur', delta: v - old, inPts: true });
   save(); closeSheet(); render(); toast('Punkte gesetzt');
-};
-Actions['strafen.resetKeepPlus'] = function (el) {
-  var p = playerById(el.dataset.pid);
-  p.cents = p.cents % 100;
-  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: 'Strafen zurückgesetzt (Pluspunkte behalten)', delta: 0 });
-  save(); closeSheet(); render(); toast('Strafen auf 0');
 };
 Actions['strafen.resetAll'] = function (el) {
   var p = playerById(el.dataset.pid);
-  p.cents = 0;
-  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: 'Komplett zurückgesetzt', delta: 0 });
+  p.points = 0;
+  S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: 'Punkte zurückgesetzt', delta: 0, inPts: true });
   save(); closeSheet(); render(); toast('Auf 0 gesetzt');
 };
 Actions['strafen.assignAll'] = function () {
   var html = '<h3>Strafe für ganze Mannschaft</h3><div class="pick-list">';
   S.catalog.filter(function (c) { return c.type === 'strafe'; }).forEach(function (c) {
-    html += '<button class="pick-row" data-action="strafen.assignAllPick" data-cid="' + c.id + '"><span>' + esc(c.label) + '</span><span class="pts-badge">' + (c.custom ? 'Sachwert' : fmtEuro(c.cents)) + '</span></button>';
+    html += '<button class="pick-row" data-action="strafen.assignAllPick" data-cid="' + c.id + '"><span>' + esc(c.label) + '</span><span class="pts-badge">' + (c.custom ? 'frei' : '+' + c.points + ' p') + '</span></button>';
   });
   html += '</div>';
   openSheet(html);
 };
 Actions['strafen.assignAllPick'] = function (el) {
   var c = catById(el.dataset.cid);
-  if (c.custom) { toast('Sachwert bitte pro Spieler vergeben'); return; }
+  if (c.custom) { toast('Bitte pro Spieler vergeben'); return; }
   S.players.forEach(function (p) {
-    p.cents += c.cents;
-    S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: c.label + ' (alle)', delta: c.cents, type: 'strafe' });
+    p.points += c.points;
+    S.history.unshift({ id: uid(), ts: Date.now(), playerId: p.id, label: c.label + ' (alle)', delta: c.points, inPts: true });
   });
   save(); closeSheet(); render(); toast(c.label + ' für alle verbucht');
 };
@@ -161,9 +151,9 @@ function strafenKatalogHTML() {
     html += '<h3 class="sub">' + (type === 'strafe' ? 'Strafen' : 'Pluspunkte') + '</h3>';
     S.catalog.filter(function (c) { return c.type === type; }).forEach(function (c) {
       html += '<div class="card row spread"><div><div class="strong">' + esc(c.label) + '</div>' +
-        '<div class="small muted">' + esc(c.group || 'Allgemein') + (c.custom ? ' · Betrag wird pro Fall festgelegt' : '') + '</div></div>' +
+        '<div class="small muted">' + esc(c.group || 'Allgemein') + (c.custom ? ' · Punkte werden pro Fall festgelegt' : '') + '</div></div>' +
         '<div class="row gap">' +
-        '<span class="pts-badge' + (type === 'plus' ? ' good' : '') + '">' + (c.custom ? 'Sachwert' : fmtEuro(c.cents)) + '</span>' +
+        '<span class="pts-badge' + (type === 'plus' ? ' good' : '') + '">' + (type === 'plus' ? '−' : '+') + (c.custom ? 'frei' : c.points + ' p') + '</span>' +
         '<button class="icon-btn" data-action="cat.edit" data-id="' + c.id + '">✎</button>' +
         '<button class="icon-btn" data-action="cat.del" data-id="' + c.id + '">✕</button></div></div>';
     });
@@ -174,15 +164,15 @@ Actions['cat.new'] = function () { catSheet(null); };
 Actions['cat.edit'] = function (el) { catSheet(catById(el.dataset.id)); };
 function catSheet(c) {
   var isNew = !c;
-  c = c || { id: uid(), label: '', cents: 0, type: 'strafe', group: 'Allgemein', custom: false };
+  c = c || { id: uid(), label: '', points: 0, type: 'strafe', group: 'Allgemein', custom: false };
   openSheet(
     '<h3>' + (isNew ? 'Neuer Eintrag' : 'Eintrag bearbeiten') + '</h3>' +
     '<label>Bezeichnung</label><input id="cat-label" value="' + esc(c.label) + '">' +
     '<label>Typ</label><div class="seg">' +
     '<button class="seg-btn' + (c.type === 'strafe' ? ' active' : '') + '" data-action="cat.setType" data-t="strafe">Strafe (+)</button>' +
     '<button class="seg-btn' + (c.type === 'plus' ? ' active' : '') + '" data-action="cat.setType" data-t="plus">Pluspunkt (−)</button></div>' +
-    '<label>Betrag in €</label><input id="cat-cents" inputmode="decimal" value="' + (c.cents / 100).toFixed(2).replace('.', ',') + '">' +
-    '<label class="check"><input type="checkbox" id="cat-custom"' + (c.custom ? ' checked' : '') + '><span>Betrag pro Fall frei wählbar (z. B. Sachwert)</span></label>' +
+    '<label>Punkte</label><input id="cat-pts" inputmode="numeric" value="' + c.points + '">' +
+    '<label class="check"><input type="checkbox" id="cat-custom"' + (c.custom ? ' checked' : '') + '><span>Punkte pro Fall frei wählbar (z. B. Sachwert)</span></label>' +
     '<label>Gruppe</label><input id="cat-group" value="' + esc(c.group || 'Allgemein') + '" placeholder="Training / Spiel / Allgemein">' +
     '<button class="btn primary" data-action="cat.save' + (isNew ? 'New' : '') + '" data-id="' + c.id + '">Speichern</button>'
   );
@@ -195,14 +185,14 @@ Actions['cat.setType'] = function (el) {
 Actions['cat.saveNew'] = function () {
   var label = document.getElementById('cat-label').value.trim();
   if (!label) { toast('Bitte Bezeichnung eingeben'); return; }
-  var cents = parseEuro(document.getElementById('cat-cents').value) || 0;
-  S.catalog.push({ id: uid(), label: label, cents: cents, type: window._catType, group: document.getElementById('cat-group').value.trim() || 'Allgemein', custom: document.getElementById('cat-custom').checked });
+  var points = parsePts(document.getElementById('cat-pts').value) || 0;
+  S.catalog.push({ id: uid(), label: label, points: points, type: window._catType, group: document.getElementById('cat-group').value.trim() || 'Allgemein', custom: document.getElementById('cat-custom').checked });
   save(); closeSheet(); render(); toast('Eintrag erstellt');
 };
 Actions['cat.save'] = function (el) {
   var c = catById(el.dataset.id);
   c.label = document.getElementById('cat-label').value.trim() || c.label;
-  c.cents = parseEuro(document.getElementById('cat-cents').value) || 0;
+  c.points = parsePts(document.getElementById('cat-pts').value) || 0;
   c.type = window._catType;
   c.group = document.getElementById('cat-group').value.trim() || 'Allgemein';
   c.custom = document.getElementById('cat-custom').checked;
@@ -222,7 +212,7 @@ function strafenVerlaufHTML() {
     var p = playerById(h.playerId);
     html += '<div class="card row spread"><div><div class="strong">' + (p ? esc(p.name) : '?') + '</div>' +
       '<div class="small muted">' + esc(h.label) + ' · ' + new Date(h.ts).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</div></div>' +
-      '<div class="row gap"><span class="pts-badge' + (h.delta > 0 ? '' : h.delta < 0 ? ' good' : '') + '">' + (h.delta > 0 ? '+' : '') + fmtEuro(h.delta) + '</span>' +
+      '<div class="row gap"><span class="pts-badge' + (h.delta > 0 ? '' : h.delta < 0 ? ' good' : '') + '">' + (h.delta > 0 ? '+' : '') + h.delta + ' p</span>' +
       (h.delta !== 0 ? '<button class="icon-btn" data-action="hist.undo" data-id="' + h.id + '">↩︎</button>' : '') +
       '</div></div>';
   });
@@ -232,17 +222,10 @@ Actions['hist.undo'] = function (el) {
   var h = S.history.find(function (x) { return x.id === el.dataset.id; });
   if (!h) return;
   var p = playerById(h.playerId);
-  if (p) p.cents -= h.delta;
+  if (p) p.points -= h.delta;
   S.history = S.history.filter(function (x) { return x.id !== h.id; });
   save(); render(); toast('Rückgängig gemacht');
 };
-
-function parseEuro(str) {
-  if (!str) return null;
-  var v = String(str).trim().replace('€', '').replace(/\s/g, '').replace(',', '.');
-  if (isNaN(parseFloat(v))) return null;
-  return Math.round(parseFloat(v) * 100);
-}
 
 /* ================= TRIKOT-LISTE ================= */
 Routes['trikots'] = function (app) {

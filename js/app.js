@@ -10,12 +10,13 @@ function esc(s) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
 }
-function fmtEuro(cents) {
-  var neg = cents < 0; var a = Math.abs(cents);
-  return (neg ? '-' : '') + Math.floor(a / 100) + ',' + String(a % 100).padStart(2, '0') + ' €';
+function fmtPts(n) { return n + ' p'; }
+function parsePts(str) {
+  if (str === undefined || str === null) return null;
+  var v = String(str).trim().replace(',', '.').replace('p', '').replace(/\s/g, '');
+  if (v === '' || isNaN(parseFloat(v))) return null;
+  return Math.round(parseFloat(v));
 }
-/* Punkte = ganze Euro minus Zehnercent (z. B. 25,20 € → 23 p; 0,30 € → -3 p) */
-function pointsOf(cents) { return Math.floor(cents / 100) - ((cents % 100) / 10); }
 function playerById(id) { return S.players.find(function (p) { return p.id === id; }) || null; }
 function teamById(id) { return S.teams.find(function (t) { return t.id === id; }) || null; }
 function catById(id) { return S.catalog.find(function (c) { return c.id === id; }) || null; }
@@ -149,7 +150,7 @@ function renderDashboard(app) {
   var club = S.settings.clubName ? esc(S.settings.clubName) : 'Mein Verein';
   var nextMatch = S.matches.filter(function (m) { return m.status !== 'done'; })
     .sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); })[0];
-  var boxCount = S.players.filter(function (p) { return pointsOf(p.cents) >= S.settings.boxThreshold; }).length;
+  var boxCount = S.players.filter(function (p) { return p.points >= S.settings.boxThreshold; }).length;
   var live = S.matches.find(function (m) { return m.status === 'live'; });
 
   var html = '' +

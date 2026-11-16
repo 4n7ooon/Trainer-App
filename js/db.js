@@ -11,7 +11,7 @@
           return migrate(state);
         }
       } catch (e) { console.warn('Load fehlgeschlagen, nutze Seed', e); }
-      return JSON.parse(JSON.stringify(window.SEED));
+      return migrate(JSON.parse(JSON.stringify(window.SEED)));
     },
     save: function (state) {
       try {
@@ -53,6 +53,35 @@
     });
     if (!s.settings.clubColors) s.settings.clubColors = { primary: '#22c55e', secondary: '#0ea5e9' };
     if (s.settings.boxThreshold === undefined) s.settings.boxThreshold = 25;
+
+    /* Migration v1 -> v2: Euro-Betraege in reine Punkte umwandeln */
+    (s.players || []).forEach(function (p) {
+      if (p.points === undefined) {
+        p.points = (p.cents !== undefined) ? (Math.floor(p.cents / 100) - ((p.cents % 100) / 10)) : 0;
+        delete p.cents;
+      }
+    });
+    (s.catalog || []).forEach(function (c) {
+      if (c.points === undefined) {
+        c.points = (c.type === 'strafe') ? Math.round((c.cents || 0) / 100) : Math.max(1, Math.round((c.cents || 0) / 10));
+        delete c.cents;
+      }
+    });
+    (s.history || []).forEach(function (h) {
+      if (!h.inPts && h.delta !== undefined) {
+        var d = h.delta;
+        h.delta = d > 0 ? Math.round(d / 100) : (Math.abs(d) >= 100 ? Math.round(d / 100) : Math.round(d / 10));
+        h.inPts = true;
+      }
+    });
+
+    /* Trikot-Liste: alle Spieler einmalig uebernehmen */
+    if (!s.trikotSeeded) {
+      (s.players || []).forEach(function (p) {
+        if (s.trikotOrder.indexOf(p.id) < 0) s.trikotOrder.push(p.id);
+      });
+      s.trikotSeeded = true;
+    }
     return s;
   }
 

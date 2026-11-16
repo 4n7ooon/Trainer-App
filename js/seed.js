@@ -1,8 +1,8 @@
-/* Start-Daten: Spielerliste & Strafenkatalog (Stand: Übernahme aus Trainer-Liste) */
+/* Start-Daten: Spielerliste & Strafenkatalog (Stand: Übernahme aus Trainer-Liste) – reine Punkte */
 window.Actions = window.Actions || {};
 window.Routes = window.Routes || {};
 window.SEED = {
-  version: 1,
+  version: 2,
   settings: {
     theme: 'dark',
     clubName: '',
@@ -15,19 +15,19 @@ window.SEED = {
     { id: 'team-c2', name: 'C2', format: '9', playerIds: [] }
   ],
   players: [
-    'Aleandro:1840', 'Alessio:1300', 'Anton:0', 'Antonio:300', 'Boris:1000',
-    'Busquets:1030', 'Elias:2200', 'Eray:1040', 'Filou:1000', 'Henrik:1000',
-    'Ilian:710', 'Janne:2050', 'Johannes:1020', 'Leon:1000', 'Liam:1100',
-    'Louis:1700', 'Lucas:1020', 'Maik:1000', 'Marco:6200', 'Maro:1000',
-    'Mats:0', 'Mattis:1520', 'Maurice:1300', 'Mehmet:30', 'Mert:1310',
-    'Nick:1000', 'Nico:30', 'Oskar:1000', 'Paul:1060', 'Rafael:1200',
-    'Sino:2050', 'Tobi:4520', 'Tom:0', 'Vale:1020'
+    'Aleandro:14', 'Alessio:13', 'Anton:0', 'Antonio:3', 'Boris:10',
+    'Busquets:10', 'Elias:22', 'Eray:10', 'Filou:10', 'Henrik:10',
+    'Ilian:7', 'Janne:20', 'Johannes:10', 'Leon:10', 'Liam:11',
+    'Louis:17', 'Lucas:10', 'Maik:10', 'Marco:62', 'Maro:10',
+    'Mats:0', 'Mattis:15', 'Maurice:13', 'Mehmet:-3', 'Mert:13',
+    'Nick:10', 'Nico:-3', 'Oskar:10', 'Paul:10', 'Rafael:12',
+    'Sino:20', 'Tobi:45', 'Tom:0', 'Vale:10'
   ].map(function (s) {
     var p = s.split(':');
     return {
       id: 'p-' + p[0].toLowerCase(),
       name: p[0],
-      cents: parseInt(p[1], 10),
+      points: parseInt(p[1], 10),
       trikotNr: '',
       teamIds: [],
       positions: [],
@@ -41,38 +41,38 @@ window.SEED = {
     };
   }),
   catalog: [
-    { id: 's1', label: 'Zu spät zum Treffpunkt', cents: 300, type: 'strafe', group: 'Training' },
-    { id: 's2', label: 'Kasten nicht mitbringen', cents: 1000, type: 'strafe', group: 'Training' },
-    { id: 's3', label: 'Ballsack vergessen (alle)', cents: 200, type: 'strafe', group: 'Training' },
-    { id: 's4', label: 'Trinkflaschen vergessen (alle)', cents: 100, type: 'strafe', group: 'Training' },
-    { id: 's5', label: 'Lachen/reden während der Trainer redet', cents: 500, type: 'strafe', group: 'Training' },
-    { id: 's6', label: 'Zu spät zum Spiel', cents: 1000, type: 'strafe', group: 'Spiel' },
-    { id: 's7', label: 'Nicht erscheinen obwohl zugesagt (Spiel)', cents: 1500, type: 'strafe', group: 'Spiel' },
-    { id: 's8', label: 'Nicht erscheinen obwohl zugesagt (Training)', cents: 500, type: 'strafe', group: 'Training' },
-    { id: 's9', label: 'Gelb wegen Meckern/Unsportlichkeit', cents: 1000, type: 'strafe', group: 'Spiel' },
-    { id: 's10', label: 'Gelb-Rot wegen Meckern', cents: 2000, type: 'strafe', group: 'Spiel' },
-    { id: 's11', label: 'Rot wegen Unsportlichkeit (Sachwert)', cents: 0, type: 'strafe', group: 'Spiel', custom: true },
-    { id: 's12', label: 'Unlustig sein', cents: 2000, type: 'strafe', group: 'Allgemein' },
-    { id: 's13', label: 'Quatsch machen', cents: 500, type: 'strafe', group: 'Allgemein' },
-    { id: 's14', label: 'Beleidigen (1 Runde Laufen)', cents: 500, type: 'strafe', group: 'Training' },
-    { id: 's15', label: 'Schuhe vergessen', cents: 400, type: 'strafe', group: 'Training' },
-    { id: 's16', label: 'Klamotten in der Kabine vergessen', cents: 200, type: 'strafe', group: 'Allgemein' },
-    { id: 's17', label: 'Ball über Fangnetz', cents: 100, type: 'strafe', group: 'Training' },
-    { id: 's18', label: 'Mit Trainer diskutieren', cents: 500, type: 'strafe', group: 'Allgemein' },
-    { id: 's19', label: 'Trainingssachen nicht ordentlich aufräumen (alle)', cents: 1000, type: 'strafe', group: 'Training' },
-    { id: 's20', label: 'Handy in der Kabine', cents: 500, type: 'strafe', group: 'Allgemein' },
-    { id: 'p1', label: 'Hütchen abräumen', cents: 10, type: 'plus', group: 'Training' },
-    { id: 'p2', label: 'Bälle zusammen zählen', cents: 10, type: 'plus', group: 'Training' },
-    { id: 'p3', label: 'Tore von allein abbauen', cents: 20, type: 'plus', group: 'Training' },
-    { id: 'p4', label: 'Trainingsmaterial herrichten', cents: 40, type: 'plus', group: 'Training' }
+    { id: 's1', label: 'Zu spät zum Treffpunkt', points: 3, type: 'strafe', group: 'Training' },
+    { id: 's2', label: 'Kasten nicht mitbringen', points: 10, type: 'strafe', group: 'Training' },
+    { id: 's3', label: 'Ballsack vergessen (alle)', points: 2, type: 'strafe', group: 'Training' },
+    { id: 's4', label: 'Trinkflaschen vergessen (alle)', points: 1, type: 'strafe', group: 'Training' },
+    { id: 's5', label: 'Lachen/reden während der Trainer redet', points: 5, type: 'strafe', group: 'Training' },
+    { id: 's6', label: 'Zu spät zum Spiel', points: 10, type: 'strafe', group: 'Spiel' },
+    { id: 's7', label: 'Nicht erscheinen obwohl zugesagt (Spiel)', points: 15, type: 'strafe', group: 'Spiel' },
+    { id: 's8', label: 'Nicht erscheinen obwohl zugesagt (Training)', points: 5, type: 'strafe', group: 'Training' },
+    { id: 's9', label: 'Gelb wegen Meckern/Unsportlichkeit', points: 10, type: 'strafe', group: 'Spiel' },
+    { id: 's10', label: 'Gelb-Rot wegen Meckern', points: 20, type: 'strafe', group: 'Spiel' },
+    { id: 's11', label: 'Rot wegen Unsportlichkeit (Sachwert)', points: 0, type: 'strafe', group: 'Spiel', custom: true },
+    { id: 's12', label: 'Unlustig sein', points: 20, type: 'strafe', group: 'Allgemein' },
+    { id: 's13', label: 'Quatsch machen', points: 5, type: 'strafe', group: 'Allgemein' },
+    { id: 's14', label: 'Beleidigen (1 Runde Laufen)', points: 5, type: 'strafe', group: 'Training' },
+    { id: 's15', label: 'Schuhe vergessen', points: 4, type: 'strafe', group: 'Training' },
+    { id: 's16', label: 'Klamotten in der Kabine vergessen', points: 2, type: 'strafe', group: 'Allgemein' },
+    { id: 's17', label: 'Ball über Fangnetz', points: 1, type: 'strafe', group: 'Training' },
+    { id: 's18', label: 'Mit Trainer diskutieren', points: 5, type: 'strafe', group: 'Allgemein' },
+    { id: 's19', label: 'Trainingssachen nicht ordentlich aufräumen (alle)', points: 10, type: 'strafe', group: 'Training' },
+    { id: 's20', label: 'Handy in der Kabine', points: 5, type: 'strafe', group: 'Allgemein' },
+    { id: 'p1', label: 'Hütchen abräumen', points: 1, type: 'plus', group: 'Training' },
+    { id: 'p2', label: 'Bälle zusammen zählen', points: 1, type: 'plus', group: 'Training' },
+    { id: 'p3', label: 'Tore von allein abbauen', points: 2, type: 'plus', group: 'Training' },
+    { id: 'p4', label: 'Trainingsmaterial herrichten', points: 4, type: 'plus', group: 'Training' }
   ],
   history: [],
   trikotOrder: [],
+  trikotSeeded: false,
   training: {
     archive: [],
     themes: [],
-    units: [],
-    nextTrikot: []
+    units: []
   },
   tactics: {
     lineups: [],

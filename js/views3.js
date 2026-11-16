@@ -80,26 +80,45 @@ function matchOpen(id) {
 /* ---------- Setup ---------- */
 function matchSetup(m) {
   var players = teamPlayers(m.teamId);
+  var starters = m.lineup.map(function (s) { return { s: s, p: playerById(s.playerId) }; }).filter(function (x) { return x.p; });
+  var bench = players.filter(function (p) { return !m.lineup.some(function (s) { return s.playerId === p.id; }); });
   var html = '<h3>Spielvorbereitung</h3>' +
     '<label>Gegner</label><input id="ms-opp" value="' + esc(m.opponent) + '">' +
     '<div class="row gap"><div class="grow"><label>Datum</label><input type="date" id="ms-date" value="' + esc(m.date) + '"></div>' +
     '<div class="grow"><label>Halbzeit (Min)</label><input type="number" id="ms-half" value="' + m.halfLen + '" min="5" max="60"></div></div>' +
-    '<h3 class="sub">Aufstellung (' + players.length + ' Spieler verfügbar)</h3>' +
     '<div class="row gap wrap">' +
     '<button class="btn ghost grow" data-action="match.loadLineup" data-id="' + m.id + '">📂 Aus Taktik-Coach</button>' +
     '<button class="btn ki grow" data-action="match.kiLineup" data-id="' + m.id + '">🤖 KI-Aufstellung</button></div>' +
-    '<div class="spacer"></div><div class="pick-list" id="ms-players">';
-  players.forEach(function (p) {
-    var on = m.lineup.some(function (s) { return s.playerId === p.id; });
-    html += '<button class="pick-row' + (on ? ' fit' : '') + '" data-action="match.togglePlayer" data-id="' + m.id + '" data-pid="' + p.id + '">' +
-      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
-      '<span class="small muted">' + (p.positions || []).join(',') + (on ? ' ✓' : '') + '</span></button>';
-  });
-  html += '</div><div class="spacer"></div>' +
-    '<button class="btn primary grow" data-action="match.start" data-id="' + m.id + '">▶️ Spiel starten</button>' +
+    '<div class="spacer"></div>' +
+    '<h3 class="sub">⭐ Startaufstellung (' + starters.length + ')</h3>' +
+    (starters.length ? starters.map(function (x) {
+      return '<div class="card row spread"><div><span class="strong">' + esc(x.p.name) + '</span>' +
+        (x.p.trikotNr ? ' <span class="muted small">#' + esc(x.p.trikotNr) + '</span>' : '') +
+        (x.s.pos ? ' <span class="pts-badge">' + esc(x.s.pos) + '</span>' : '') + '</div>' +
+        '<button class="icon-btn" data-action="match.removeStarter" data-id="' + m.id + '" data-pid="' + x.p.id + '">✕</button></div>';
+    }).join('') : '<p class="muted small">Noch leer – tippe unten Spieler auf der Bank an, um sie in die Startaufstellung zu holen.</p>') +
+    '<h3 class="sub">🪑 Bank (' + bench.length + ')</h3><div class="pick-list">' +
+    (bench.length ? bench.map(function (p) {
+      return '<button class="pick-row" data-action="match.addStarter" data-id="' + m.id + '" data-pid="' + p.id + '">' +
+        '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+        '<span class="small muted">' + (p.positions || []).join(',') + ' +</span></button>';
+    }).join('') : '<p class="muted small">Alle Kader-Spieler stehen in der Startaufstellung.</p>') +
+    '</div><div class="spacer"></div>' +
+    '<button class="btn primary grow" data-action="match.start" data-id="' + m.id + '">▶️ Anpfiff – Spiel starten</button>' +
     '<div class="spacer"></div><button class="btn danger small-btn" data-action="match.delete" data-id="' + m.id + '">Spiel löschen</button>';
   openSheet(html);
 }
+Actions['match.addStarter'] = function (el) {
+  var m = matchById(el.dataset.id);
+  if (m.lineup.some(function (s) { return s.playerId === el.dataset.pid; })) return;
+  m.lineup.push({ playerId: el.dataset.pid, pos: '' });
+  save(); matchSetup(m);
+};
+Actions['match.removeStarter'] = function (el) {
+  var m = matchById(el.dataset.id);
+  m.lineup = m.lineup.filter(function (s) { return s.playerId !== el.dataset.pid; });
+  save(); matchSetup(m);
+};
 function teamPlayers(teamId) {
   var t = teamById(teamId);
   if (t && (t.playerIds || []).length) return t.playerIds.map(playerById).filter(Boolean);
@@ -175,7 +194,6 @@ function matchMinute(m) {
 }
 function fmtClock(min, halfLen, half) {
   min = Math.floor(min);
-  if (half === 1 && min > halfLen) min = halfLen;
   return String(min).padStart(2, '0') + "' · Halbzeit " + half;
 }
 function onPitchPlayers(m) {
@@ -230,8 +248,11 @@ function renderLive(m) {
   });
   if (!(m.events || []).length) html += '<p class="muted small">Noch keine Ereignisse.</p>';
   html += '</div>' +
-    '<div class="spacer"></div><details class="card"><summary>Aufstellung (' + onPitchPlayers(m).length + ' auf dem Platz)</summary><div class="chip-row">' +
+    '<div class="spacer"></div><details class="card"><summary>⭐ Aufstellung (' + onPitchPlayers(m).length + ' auf dem Platz)</summary><div class="chip-row">' +
     onPitchPlayers(m).map(function (p) { return '<span class="chip active small-chip">' + esc(p.name) + (p.trikotNr ? ' #' + esc(p.trikotNr) : '') + '</span>'; }).join('') +
+    '</div></details>' +
+    '<details class="card"><summary>🪑 Bank (' + benchPlayers(m).length + ')</summary><div class="chip-row">' +
+    benchPlayers(m).map(function (p) { return '<span class="chip small-chip">' + esc(p.name) + (p.trikotNr ? ' #' + esc(p.trikotNr) : '') + '</span>'; }).join('') +
     '</div></details>';
   app.innerHTML = html;
   renderHeader('spieltag');
