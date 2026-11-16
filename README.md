@@ -30,3 +30,10 @@ Statische Dateien – läuft auf jedem beliebigen Static-Hosting (z. B. GitHub P
 
 ## Technik
 Vanilla JS (keine Abhängigkeiten, keine Build-Schritte), Daten in `localStorage`, Medien (Bilder/Videos) in IndexedDB.
+
+## Datenschutz (DSGVO)
+- Die App speichert **alle Daten ausschließlich lokal** auf dem Gerät (localStorage + IndexedDB im Browser). Es gibt keinen Server, keine Übertragung, keine Tracker.
+- Der öffentlich einsehbare Quellcode enthält **keine echten Spielerdaten** – der Start-Seed nutzt anonyme Platzhalter („Spieler 1–34").
+- Wer den Link öffnet, erhält eine leere Demo-App mit Platzhaltern – **nicht** die Daten des Trainers.
+- Backups (Export) sind JSON-Dateien auf dem Gerät des Trainers und liegen in dessen Verantwortung.
+- Empfehlung: Den App-Link nur mit eigenen Trainern teilen, nicht öffentlich posten.

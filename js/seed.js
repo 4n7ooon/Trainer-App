@@ -14,32 +14,30 @@ window.SEED = {
     { id: 'team-c1', name: 'C1', format: '11', playerIds: [] },
     { id: 'team-c2', name: 'C2', format: '9', playerIds: [] }
   ],
-  players: [
-    'Aleandro:14', 'Alessio:13', 'Anton:0', 'Antonio:3', 'Boris:10',
-    'Busquets:10', 'Elias:22', 'Eray:10', 'Filou:10', 'Henrik:10',
-    'Ilian:7', 'Janne:20', 'Johannes:10', 'Leon:10', 'Liam:11',
-    'Louis:17', 'Lucas:10', 'Maik:10', 'Marco:62', 'Maro:10',
-    'Mats:0', 'Mattis:15', 'Maurice:13', 'Mehmet:-3', 'Mert:13',
-    'Nick:10', 'Nico:-3', 'Oskar:10', 'Paul:10', 'Rafael:12',
-    'Sino:20', 'Tobi:45', 'Tom:0', 'Vale:10'
-  ].map(function (s) {
-    var p = s.split(':');
-    return {
-      id: 'p-' + p[0].toLowerCase(),
-      name: p[0],
-      points: parseInt(p[1], 10),
-      trikotNr: '',
-      teamIds: [],
-      positions: [],
-      skills: { schuss: 0, pass: 0, dribbling: 0, verteidigung: 0, technik: 0, kopfball: 0, kondition: 0, taktik: 0 },
-      attrs: { groesse: '', gewicht: '', statur: '', staerken: '', probleme: '', einsetzbarkeit: '' },
-      trainingCount: 0,
-      trainingsLeistung: [],
-      einsaetze: [],
-      trikotHad: false,
-      note: ''
-    };
-  }),
+  /* Datenschutz: Keine echten Namen im Quellcode! Der Start-Seed enthält nur
+     anonyme Platzhalter. Echte Daten werden ausschließlich lokal auf dem
+     Gerät erfasst (localStorage) und verlassen das Gerät nie. */
+  players: (function () {
+    var arr = [];
+    for (var i = 1; i <= 34; i++) {
+      arr.push({
+        id: 'p-spieler' + i,
+        name: 'Spieler ' + i,
+        points: 0,
+        trikotNr: '',
+        teamIds: [],
+        positions: [],
+        skills: { schuss: 0, pass: 0, dribbling: 0, verteidigung: 0, technik: 0, kopfball: 0, kondition: 0, taktik: 0 },
+        attrs: { groesse: '', gewicht: '', statur: '', staerken: '', probleme: '', einsetzbarkeit: '' },
+        trainingCount: 0,
+        trainingsLeistung: [],
+        einsaetze: [],
+        trikotHad: false,
+        note: ''
+      });
+    }
+    return arr;
+  })(),
   catalog: [
     { id: 's1', label: 'Zu spät zum Treffpunkt', points: 3, type: 'strafe', group: 'Training' },
     { id: 's2', label: 'Kasten nicht mitbringen', points: 10, type: 'strafe', group: 'Training' },

@@ -299,6 +299,7 @@ Routes['settings'] = function (app) {
 
     '<div class="card"><h3>Daten & Backup</h3>' +
     '<p class="small muted">Alle Änderungen werden automatisch auf diesem Gerät gespeichert. Exportiere regelmäßig ein Backup (z. B. nach Spiel- oder Trainingstagen).</p>' +
+    '<p class="small muted">🔒 <b>Datenschutz:</b> Alle Daten (Spieler, Punkte, Spiele, Notizen) liegen ausschließlich lokal auf diesem Gerät. Es gibt keinen Server, nichts wird übertragen oder ist online sichtbar. Den App-Link deshalb nicht weitergeben – wer ihn öffnet, sieht nur eine leere Demo-App, nicht deine Daten.</p>' +
     '<button class="btn primary" data-action="settings.export">⬇️ Backup exportieren</button>' +
     '<div class="spacer"></div>' +
     '<input type="file" id="import-file" accept="application/json" style="display:none">' +
