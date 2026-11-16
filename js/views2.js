@@ -29,7 +29,8 @@ function einsatzStats(p) {
 Routes['spieler'] = function (app) {
   var html = '<div class="row gap wrap">' +
     '<button class="btn primary grow" data-action="pl.new">+ Spieler</button>' +
-    '<button class="btn ki grow" data-action="pl.kiGroup">🤖 KI-Teamanalyse</button></div><div class="spacer"></div>';
+    '<button class="btn ki grow" data-action="pl.kiGroup">🤖 KI-Teamanalyse</button></div>' +
+    '<div class="row gap wrap"><button class="btn ghost small-btn grow" data-action="pl.resetStats">↺ Statistiken aller Spieler auf 0 setzen</button></div><div class="spacer"></div>';
   var list = S.players.slice().sort(byName);
   list.forEach(function (p) {
     var st = einsatzStats(p);
@@ -46,6 +47,22 @@ Routes['spieler'] = function (app) {
   });
   app.innerHTML = html;
 };
+Actions['pl.resetStats'] = function () {
+  confirmDlg('Statistiken ALLER Spieler zurücksetzen? Minuten, Spiele, Trainings, Tore, Assists, Noten und Ticker-Ereignisse werden auf 0 gesetzt. Namen, Punkte, Bewertungen & Eigenschaften bleiben erhalten.', function () {
+    S.players.forEach(function (p) {
+      p.einsaetze = [];
+      p.trainingsLeistung = [];
+      p.trainingCount = 0;
+    });
+    (S.matches || []).forEach(function (m) {
+      m.events = [];
+      m.ratings = {};
+      m.minutes = {};
+    });
+    save(); render(); toast('Alle Statistiken auf 0 gesetzt ✓');
+  });
+};
+
 Actions['pl.new'] = function () {
   openSheet('<h3>Neuer Spieler</h3><label>Name</label><input id="np-name">' +
     '<label>Trikotnummer</label><input id="np-nr" inputmode="numeric">' +
@@ -55,7 +72,7 @@ Actions['pl.create'] = function () {
   var name = document.getElementById('np-name').value.trim();
   if (!name) { toast('Bitte Namen eingeben'); return; }
   S.players.push({
-    id: uid(), name: name, cents: 0, trikotNr: document.getElementById('np-nr').value.trim(),
+    id: uid(), name: name, points: 0, trikotNr: document.getElementById('np-nr').value.trim(),
     teamIds: [], positions: [],
     skills: { schuss: 0, pass: 0, dribbling: 0, verteidigung: 0, technik: 0, kopfball: 0, kondition: 0, taktik: 0 },
     attrs: { groesse: '', gewicht: '', statur: '', staerken: '', probleme: '', einsetzbarkeit: '' },

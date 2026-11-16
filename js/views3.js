@@ -59,10 +59,11 @@ Actions['match.create'] = function () {
     home: window._nmHome, teamId: window._nmTeam,
     halfLen: Math.max(5, parseInt(document.getElementById('nm-half').value, 10) || S.settings.halfLength || 35),
     status: 'setup', lineup: [], events: [], ratings: {}, minutes: {},
+    squad: [], squadChosen: false, formation: '',
     clock: { running: false, base: 0, startedAt: null, half: 1 }
   };
   S.matches.push(m);
-  save(); closeSheet(); matchOpen(m.id);
+  save(); closeSheet(); matchSquadSheet(m);
 };
 Actions['match.open'] = function (el) { matchOpen(el.dataset.id); };
 
@@ -74,29 +75,115 @@ function matchOpen(id) {
     return;
   }
   if (m.status === 'done') { nav('spiel-' + m.id); return; }
-  matchSetup(m);
+  if (!m.squadChosen) matchSquadSheet(m); else matchSetup(m);
 }
 
-/* ---------- Setup ---------- */
+/* ---------- Schritt 1: Kader auswählen ---------- */
+function matchSquadSheet(m) {
+  var pool = teamPlayers(m.teamId);
+  var html = '<h3>1/2 · Kader für ' + esc(m.opponent || 'das Spiel') + '</h3>' +
+    '<p class="small muted">Wer ist dabei? Tippe Spieler an, um sie zum Kader hinzuzufügen/entfernen.</p>' +
+    '<div class="row gap wrap">' +
+    '<button class="btn ghost small-btn grow" data-action="match.squadAll" data-id="' + m.id + '">Alle</button>' +
+    '<button class="btn ghost small-btn grow" data-action="match.squadNone" data-id="' + m.id + '">Keinen</button></div>' +
+    '<div class="spacer"></div><div class="pick-list">';
+  pool.forEach(function (p) {
+    var inSquad = (m.squad || []).indexOf(p.id) >= 0;
+    html += '<button class="pick-row' + (inSquad ? ' fit' : '') + '" data-action="match.toggleSquad" data-id="' + m.id + '" data-pid="' + p.id + '">' +
+      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
+      '<span class="small muted">' + (inSquad ? '✓ dabei' : '+') + '</span></button>';
+  });
+  html += '</div><div class="spacer"></div>' +
+    '<button class="btn primary grow" data-action="match.toLineup" data-id="' + m.id + '">Weiter zur Aufstellung ➜</button>';
+  openSheet(html);
+}
+Actions['match.toggleSquad'] = function (el) {
+  var m = matchById(el.dataset.id);
+  var pid = el.dataset.pid;
+  var i = (m.squad || []).indexOf(pid);
+  if (!m.squad) m.squad = [];
+  if (i >= 0) { m.squad.splice(i, 1); el.classList.remove('fit'); el.querySelector('span:last-child').textContent = '+'; }
+  else { m.squad.push(pid); el.classList.add('fit'); el.querySelector('span:last-child').textContent = '✓ dabei'; }
+  save();
+};
+Actions['match.squadAll'] = function (el) {
+  var m = matchById(el.dataset.id);
+  m.squad = teamPlayers(m.teamId).map(function (p) { return p.id; });
+  save(); matchSquadSheet(m);
+};
+Actions['match.squadNone'] = function (el) {
+  var m = matchById(el.dataset.id);
+  m.squad = [];
+  save(); matchSquadSheet(m);
+};
+Actions['match.toLineup'] = function (el) {
+  var m = matchById(el.dataset.id);
+  if (!(m.squad || []).length) { toast('Erst Kader auswählen'); return; }
+  m.squadChosen = true;
+  save(); closeSheet(); matchSetup(m);
+};
+Actions['match.editSquad'] = function (el) {
+  var m = matchById(el.dataset.id);
+  save(); matchSquadSheet(m);
+};
+
+/* ---------- Schritt 2: Aufstellung (Pitch-Grafik wie Taktik-Coach) ---------- */
+function matchEnsureLineup(m) {
+  var team = teamById(m.teamId);
+  var format = team ? team.format : '11';
+  if (!m.formation || !FORMATIONS[format][m.formation]) m.formation = format === '9' ? '3-3-2' : '4-2-3-1';
+  var slots = FORMATIONS[format][m.formation];
+  if (!m.lineup || m.lineup.length !== slots.length) {
+    var old = m.lineup || [];
+    m.lineup = slots.map(function (s, i) {
+      return { playerId: (old[i] && old[i].playerId) || null, pos: s.pos };
+    });
+  } else {
+    m.lineup.forEach(function (s, i) { s.pos = slots[i].pos; });
+  }
+}
+
 function matchSetup(m) {
-  var players = teamPlayers(m.teamId);
-  var starters = m.lineup.map(function (s) { return { s: s, p: playerById(s.playerId) }; }).filter(function (x) { return x.p; });
-  var bench = players.filter(function (p) { return !m.lineup.some(function (s) { return s.playerId === p.id; }); });
-  var html = '<h3>Spielvorbereitung</h3>' +
+  matchEnsureLineup(m);
+  if (!m.squad || !m.squad.length) m.squad = teamPlayers(m.teamId).map(function (p) { return p.id; });
+  var team = teamById(m.teamId);
+  var format = team ? team.format : '11';
+  var slots = FORMATIONS[format][m.formation];
+  var squad = m.squad.map(playerById).filter(Boolean);
+  var starters = m.lineup.filter(function (s) { return s.playerId; }).length;
+  var bench = squad.filter(function (p) { return !m.lineup.some(function (s) { return s.playerId === p.id; }); });
+  var html = '<h3>2/2 · Aufstellung vs. ' + esc(m.opponent || '?') + '</h3>' +
     '<label>Gegner</label><input id="ms-opp" value="' + esc(m.opponent) + '">' +
     '<div class="row gap"><div class="grow"><label>Datum</label><input type="date" id="ms-date" value="' + esc(m.date) + '"></div>' +
     '<div class="grow"><label>Halbzeit (Min)</label><input type="number" id="ms-half" value="' + m.halfLen + '" min="5" max="60"></div></div>' +
+    '<div class="spacer"></div>' +
+    '<div class="chip-row">' + Object.keys(FORMATIONS[format]).map(function (f) {
+      return '<button class="chip' + (m.formation === f ? ' active' : '') + '" data-action="match.setFormation" data-id="' + m.id + '" data-f="' + f + '">' + f + '</button>';
+    }).join('') + '</div>' +
+    '<div class="pitch" id="pitch">';
+  slots.forEach(function (slot, i) {
+    var assigned = m.lineup[i] && m.lineup[i].playerId ? playerById(m.lineup[i].playerId) : null;
+    var nr = assigned && assigned.trikotNr ? assigned.trikotNr : '';
+    html += '<button class="slot' + (assigned ? ' filled' : '') + '" style="left:' + slot.x + '%;top:' + (100 - slot.y) + '%" ' +
+      'data-action="match.slot" data-id="' + m.id + '" data-i="' + i + '">' +
+      '<span class="slot-pos">' + slot.pos + '</span>' +
+      '<span class="slot-name">' + (assigned ? esc(assigned.name.split(' ')[0]) : '+') + '</span>' +
+      (nr ? '<span class="slot-nr">' + esc(nr) + '</span>' : '') +
+      '</button>';
+  });
+  html += '</div>' +
     '<div class="row gap wrap">' +
     '<button class="btn ghost grow" data-action="match.loadLineup" data-id="' + m.id + '">📂 Aus Taktik-Coach</button>' +
     '<button class="btn ki grow" data-action="match.kiLineup" data-id="' + m.id + '">🤖 KI-Aufstellung</button></div>' +
     '<div class="spacer"></div>' +
-    '<h3 class="sub">⭐ Startaufstellung (' + starters.length + ')</h3>' +
-    (starters.length ? starters.map(function (x) {
-      return '<div class="card row spread"><div><span class="strong">' + esc(x.p.name) + '</span>' +
-        (x.p.trikotNr ? ' <span class="muted small">#' + esc(x.p.trikotNr) + '</span>' : '') +
-        (x.s.pos ? ' <span class="pts-badge">' + esc(x.s.pos) + '</span>' : '') + '</div>' +
-        '<button class="icon-btn" data-action="match.removeStarter" data-id="' + m.id + '" data-pid="' + x.p.id + '">✕</button></div>';
-    }).join('') : '<p class="muted small">Noch leer – tippe unten Spieler auf der Bank an, um sie in die Startaufstellung zu holen.</p>') +
+    '<h3 class="sub">⭐ Startaufstellung (' + starters + ')</h3>' +
+    (starters ? m.lineup.filter(function (s) { return s.playerId; }).map(function (s) {
+      var p = playerById(s.playerId);
+      return '<div class="card row spread"><div><span class="strong">' + esc(p.name) + '</span>' +
+        (p.trikotNr ? ' <span class="muted small">#' + esc(p.trikotNr) + '</span>' : '') +
+        ' <span class="pts-badge">' + esc(s.pos) + '</span></div>' +
+        '<button class="icon-btn" data-action="match.removeStarter" data-id="' + m.id + '" data-pid="' + p.id + '">✕</button></div>';
+    }).join('') : '<p class="muted small">Tippe Positionen auf dem Platz an, um Spieler zuzuordnen.</p>') +
     '<h3 class="sub">🪑 Bank (' + bench.length + ')</h3><div class="pick-list">' +
     (bench.length ? bench.map(function (p) {
       return '<button class="pick-row" data-action="match.addStarter" data-id="' + m.id + '" data-pid="' + p.id + '">' +
@@ -104,19 +191,74 @@ function matchSetup(m) {
         '<span class="small muted">' + (p.positions || []).join(',') + ' +</span></button>';
     }).join('') : '<p class="muted small">Alle Kader-Spieler stehen in der Startaufstellung.</p>') +
     '</div><div class="spacer"></div>' +
-    '<button class="btn primary grow" data-action="match.start" data-id="' + m.id + '">▶️ Anpfiff – Spiel starten</button>' +
+    '<div class="row gap wrap">' +
+    '<button class="btn ghost grow" data-action="match.editSquad" data-id="' + m.id + '">👥 Kader ändern</button>' +
+    '<button class="btn primary grow" data-action="match.start" data-id="' + m.id + '">▶️ Anpfiff – Spiel starten</button></div>' +
     '<div class="spacer"></div><button class="btn danger small-btn" data-action="match.delete" data-id="' + m.id + '">Spiel löschen</button>';
   openSheet(html);
 }
+Actions['match.setFormation'] = function (el) {
+  var m = matchById(el.dataset.id);
+  var team = teamById(m.teamId);
+  var format = team ? team.format : '11';
+  if (!FORMATIONS[format][el.dataset.f]) return;
+  m.formation = el.dataset.f;
+  var old = m.lineup || [];
+  m.lineup = FORMATIONS[format][m.formation].map(function (s, i) {
+    return { playerId: (old[i] && old[i].playerId) || null, pos: s.pos };
+  });
+  save(); matchSetup(m);
+};
+Actions['match.slot'] = function (el) {
+  var m = matchById(el.dataset.id);
+  matchEnsureLineup(m);
+  var i = parseInt(el.dataset.i, 10);
+  var slot = FORMATIONS[(teamById(m.teamId) || { format: '11' }).format][m.formation][i];
+  var cur = m.lineup[i];
+  var family = POS_FAMILY[slot.pos] || 'Mittelfeld';
+  var squad = (m.squad || []).map(playerById).filter(Boolean);
+  var pool = squad.slice().sort(byName).sort(function (a, b) {
+    var af = (a.positions || []).indexOf(family) >= 0 ? 1 : 0;
+    var bf = (b.positions || []).indexOf(family) >= 0 ? 1 : 0;
+    return bf - af;
+  });
+  var html = '<h3>Position: ' + esc(slot.pos) + '</h3><div class="pick-list">';
+  pool.forEach(function (p) {
+    var fit = (p.positions || []).indexOf(family) >= 0;
+    var used = m.lineup.some(function (s, j) { return s.playerId === p.id && j !== i; });
+    html += '<button class="pick-row' + (fit ? ' fit' : '') + '" data-action="match.assign" data-id="' + m.id + '" data-i="' + i + '" data-pid="' + p.id + '">' +
+      '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + (used ? ' <span class="small muted">(bereits aufgestellt)</span>' : '') + '</span>' +
+      '<span class="small muted">' + (p.positions || []).join(',') + '</span></button>';
+  });
+  html += '</div>';
+  if (cur && cur.playerId) html += '<div class="spacer"></div><button class="btn danger grow" data-action="match.unassign" data-id="' + m.id + '" data-i="' + i + '">Spieler von Position nehmen</button>';
+  openSheet(html);
+};
+Actions['match.assign'] = function (el) {
+  var m = matchById(el.dataset.id);
+  matchEnsureLineup(m);
+  m.lineup[parseInt(el.dataset.i, 10)].playerId = el.dataset.pid;
+  save(); closeSheet(); matchSetup(m);
+};
+Actions['match.unassign'] = function (el) {
+  var m = matchById(el.dataset.id);
+  matchEnsureLineup(m);
+  m.lineup[parseInt(el.dataset.i, 10)].playerId = null;
+  save(); closeSheet(); matchSetup(m);
+};
 Actions['match.addStarter'] = function (el) {
   var m = matchById(el.dataset.id);
+  matchEnsureLineup(m);
   if (m.lineup.some(function (s) { return s.playerId === el.dataset.pid; })) return;
-  m.lineup.push({ playerId: el.dataset.pid, pos: '' });
+  var free = m.lineup.findIndex(function (s) { return !s.playerId; });
+  if (free < 0) { toast('Alle Positionen sind besetzt'); return; }
+  m.lineup[free].playerId = el.dataset.pid;
   save(); matchSetup(m);
 };
 Actions['match.removeStarter'] = function (el) {
   var m = matchById(el.dataset.id);
-  m.lineup = m.lineup.filter(function (s) { return s.playerId !== el.dataset.pid; });
+  matchEnsureLineup(m);
+  m.lineup.forEach(function (s) { if (s.playerId === el.dataset.pid) s.playerId = null; });
   save(); matchSetup(m);
 };
 function teamPlayers(teamId) {
@@ -124,14 +266,6 @@ function teamPlayers(teamId) {
   if (t && (t.playerIds || []).length) return t.playerIds.map(playerById).filter(Boolean);
   return S.players.slice();
 }
-Actions['match.togglePlayer'] = function (el) {
-  var m = matchById(el.dataset.id);
-  var pid = el.dataset.pid;
-  var i = m.lineup.findIndex(function (s) { return s.playerId === pid; });
-  if (i >= 0) { m.lineup.splice(i, 1); el.classList.remove('fit'); }
-  else { m.lineup.push({ playerId: pid, pos: '' }); el.classList.add('fit'); }
-  save();
-};
 Actions['match.loadLineup'] = function (el) {
   var m = matchById(el.dataset.id);
   var saved = S.tactics.lineups.filter(function (l) { return l.teamId === m.teamId; });
@@ -147,22 +281,40 @@ Actions['match.loadLineup'] = function (el) {
 Actions['match.loadLineupPick'] = function (el) {
   var m = matchById(el.dataset.id);
   var l = S.tactics.lineups.find(function (x) { return x.id === el.dataset.l; });
-  m.lineup = l.slots.filter(function (s) { return s.playerId && playerById(s.playerId); })
-    .map(function (s) { return { playerId: s.playerId, pos: s.pos }; });
-  save(); closeSheet(); matchOpen(m.id); toast('Aufstellung übernommen');
+  var team = teamById(m.teamId);
+  var format = team ? team.format : '11';
+  if (FORMATIONS[format][l.formation]) m.formation = l.formation;
+  var slots = FORMATIONS[format][m.formation];
+  var src = l.slots || [];
+  m.lineup = slots.map(function (s, i) {
+    return { playerId: (src[i] && src[i].playerId && playerById(src[i].playerId)) ? src[i].playerId : null, pos: s.pos };
+  });
+  if (!m.squad || !m.squad.length) m.squad = teamPlayers(m.teamId).map(function (p) { return p.id; });
+  save(); closeSheet(); matchSetup(m); toast('Aufstellung übernommen');
 };
 Actions['match.kiLineup'] = function (el) {
   var m = matchById(el.dataset.id);
-  var slots = KI.autoLineup('4-2-3-1', (teamById(m.teamId) || {}).format || '11', m.teamId);
-  m.lineup = slots.filter(function (s) { return s.playerId; }).map(function (s) { return { playerId: s.playerId, pos: s.pos }; });
-  save(); matchOpen(m.id); toast('KI-Aufstellung eingesetzt');
+  matchEnsureLineup(m);
+  var slots = KI.autoLineup(m.formation, (teamById(m.teamId) || {}).format || '11', m.teamId);
+  var squad = m.squad || [];
+  if (squad.length) {
+    var inSquad = {};
+    squad.forEach(function (id) { inSquad[id] = true; });
+    var seen = {};
+    slots = slots.map(function (s) {
+      if (s.playerId && inSquad[s.playerId] && !seen[s.playerId]) { seen[s.playerId] = true; return s; }
+      return { pos: s.pos, playerId: null };
+    });
+  }
+  m.lineup = slots;
+  save(); matchSetup(m); toast('KI-Aufstellung eingesetzt');
 };
 Actions['match.start'] = function (el) {
   var m = matchById(el.dataset.id);
   m.opponent = document.getElementById('ms-opp').value.trim();
   m.date = document.getElementById('ms-date').value;
   m.halfLen = Math.max(5, parseInt(document.getElementById('ms-half').value, 10) || 35);
-  if (!m.lineup.length) { toast('Mindestens 1 Spieler aufstellen'); return; }
+  if (!m.lineup.some(function (s) { return s.playerId; })) { toast('Mindestens 1 Spieler aufstellen'); return; }
   m.status = 'live';
   m.clock = { running: true, base: 0, startedAt: Date.now(), half: 1 };
   save(); closeSheet();
@@ -212,7 +364,9 @@ function onPitchPlayers(m) {
 }
 function benchPlayers(m) {
   var onPitch = onPitchPlayers(m).map(function (p) { return p.id; });
-  return teamPlayers(m.teamId).filter(function (p) { return onPitch.indexOf(p.id) < 0; });
+  var pool = (m.squad || []).map(playerById).filter(Boolean);
+  if (!pool.length) pool = teamPlayers(m.teamId);
+  return pool.filter(function (p) { return onPitch.indexOf(p.id) < 0; });
 }
 
 function renderLive(m) {
@@ -421,6 +575,7 @@ function computeMinutes(m) {
   var intervals = {};
   var seen = {};
   m.lineup.forEach(function (s) {
+    if (!s.playerId) return;
     if (!seen[s.playerId]) { intervals[s.playerId] = [{ from: 0, open: true }]; seen[s.playerId] = true; }
   });
   (m.events || []).forEach(function (ev) {

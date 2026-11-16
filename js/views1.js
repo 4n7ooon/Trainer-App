@@ -232,7 +232,8 @@ Routes['trikots'] = function (app) {
   var ids = S.trikotOrder.filter(function (id) { return playerById(id); });
   var next = ids.map(function (id) { return playerById(id); }).filter(function (p) { return !p.trikotHad; }).sort(byName)[0];
   var html = '<div class="card hint-card">👕 Reihenfolge: alphabetisch. Als nächstes dran: <b>' + (next ? esc(next.name) : 'alle durch!') + '</b></div>';
-  html += '<button class="btn primary" data-action="trikot.add">+ Spieler hinzufügen</button><div class="spacer"></div>';
+  html += '<div class="row gap wrap"><button class="btn primary grow" data-action="trikot.add">+ Spieler hinzufügen</button>' +
+    '<button class="btn ghost grow" data-action="trikot.resetAll">↺ Alle Häkchen zurücksetzen</button></div><div class="spacer"></div>';
   ids.map(function (id) { return playerById(id); }).sort(byName).forEach(function (p) {
     html += '<div class="card row spread trikot-row' + (p.trikotHad ? ' done' : '') + '">' +
       '<label class="check big"><input type="checkbox" data-action="trikot.check" data-id="' + p.id + '"' + (p.trikotHad ? ' checked' : '') + '>' +
@@ -251,6 +252,14 @@ Actions['trikot.check'] = function (el, e) {
   if (e.target.checked) toast(p.name + ' abgehakt ✓');
   render();
 };
+Actions['trikot.resetAll'] = function () {
+  confirmDlg('Alle Häkchen entfernen? Die Liste bleibt bestehen, alle Spieler gelten wieder als "nicht gehabt".', function () {
+    S.trikotOrder.forEach(function (id) { var p = playerById(id); if (p) p.trikotHad = false; });
+    S.players.forEach(function (p) { if (S.trikotOrder.indexOf(p.id) >= 0) p.trikotHad = false; });
+    save(); render(); toast('Trikot-Liste zurückgesetzt ✓');
+  });
+};
+
 Actions['trikot.add'] = function () {
   var html = '<h3>Spieler zur Trikot-Liste</h3><div class="pick-list">';
   S.players.slice().sort(byName).forEach(function (p) {
