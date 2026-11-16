@@ -69,8 +69,20 @@ Actions['strafen.player'] = function (el) {
   });
   html += '</div><h3 class="sub">Manuell</h3>' +
     '<div class="row gap"><input id="man-pts" inputmode="numeric" placeholder="z. B. 12 oder -3">' +
-    '<button class="btn primary" data-action="strafen.setPoints" data-pid="' + p.id + '">Setzen</button></div>' +
-    '<div class="spacer"></div>' +
+    '<button class="btn primary" data-action="strafen.setPoints" data-pid="' + p.id + '">Setzen</button></div>';
+  /* Verlauf: wofür hat dieser Spieler seine Punkte bekommen? */
+  var hist = S.history.filter(function (h) { return h.playerId === p.id; }).slice(0, 20);
+  html += '<h3 class="sub">Verlauf' + (hist.length ? ' (letzte ' + hist.length + ')' : '') + '</h3>';
+  if (!hist.length) html += '<p class="muted small">Noch keine Einträge.</p>';
+  hist.forEach(function (h) {
+    var d = new Date(h.ts);
+    var datum = isNaN(d) ? '' : d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+    var delta = h.delta > 0 ? '+' + h.delta + ' p' : h.delta < 0 ? '−' + Math.abs(h.delta) + ' p' : '0 p';
+    html += '<div class="card row spread"><div><div>' + esc(h.label) + '</div>' +
+      '<div class="small muted">' + datum + '</div></div>' +
+      '<span class="pts-badge' + (h.delta > 0 ? '' : ' good') + '">' + delta + '</span></div>';
+  });
+  html += '<div class="spacer"></div>' +
     '<button class="btn danger grow" data-action="strafen.resetAll" data-pid="' + p.id + '">Auf 0 zurücksetzen</button>';
   openSheet(html);
 };

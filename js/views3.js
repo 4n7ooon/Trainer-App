@@ -165,7 +165,7 @@ function matchSetup(m) {
     var assigned = m.lineup[i] && m.lineup[i].playerId ? playerById(m.lineup[i].playerId) : null;
     var nr = assigned && assigned.trikotNr ? assigned.trikotNr : '';
     html += '<button class="slot' + (assigned ? ' filled' : '') + '" style="left:' + slot.x + '%;top:' + (100 - slot.y) + '%" ' +
-      'data-action="match.slot" data-id="' + m.id + '" data-i="' + i + '">' +
+      'data-action="match.slot" data-id="' + m.id + '" data-i="' + i + '" data-dragctx="match">' +
       '<span class="slot-pos">' + slot.pos + '</span>' +
       '<span class="slot-name">' + (assigned ? esc(assigned.name.split(' ')[0]) : '+') + '</span>' +
       (nr ? '<span class="slot-nr">' + esc(nr) + '</span>' : '') +
@@ -186,7 +186,7 @@ function matchSetup(m) {
     }).join('') : '<p class="muted small">Tippe Positionen auf dem Platz an, um Spieler zuzuordnen.</p>') +
     '<h3 class="sub">🪑 Bank (' + bench.length + ')</h3><div class="pick-list">' +
     (bench.length ? bench.map(function (p) {
-      return '<button class="pick-row" data-action="match.addStarter" data-id="' + m.id + '" data-pid="' + p.id + '">' +
+      return '<button class="pick-row" data-action="match.addStarter" data-id="' + m.id + '" data-pid="' + p.id + '" data-dragctx="match" data-drag="bench">' +
         '<span>' + esc(p.name) + (p.trikotNr ? ' <span class="muted">#' + esc(p.trikotNr) + '</span>' : '') + '</span>' +
         '<span class="small muted">' + (p.positions || []).join(',') + ' +</span></button>';
     }).join('') : '<p class="muted small">Alle Kader-Spieler stehen in der Startaufstellung.</p>') +
@@ -245,6 +245,15 @@ Actions['match.unassign'] = function (el) {
   matchEnsureLineup(m);
   m.lineup[parseInt(el.dataset.i, 10)].playerId = null;
   save(); closeSheet(); matchSetup(m);
+};
+Actions['match.swap'] = function (el) {
+  var m = matchById(el.dataset.id);
+  matchEnsureLineup(m);
+  var a = parseInt(el.dataset.a, 10), b = parseInt(el.dataset.b, 10);
+  var tmp = m.lineup[a].playerId;
+  m.lineup[a].playerId = m.lineup[b].playerId;
+  m.lineup[b].playerId = tmp;
+  save(); matchSetup(m); toast('Positionen getauscht');
 };
 Actions['match.addStarter'] = function (el) {
   var m = matchById(el.dataset.id);

@@ -347,6 +347,7 @@ function applyTheme() {
 
 /* ---------- Global Event-Delegation ---------- */
 document.addEventListener('click', function (e) {
+  if (window._dragConsumed) { window._dragConsumed = false; return; } /* Drag-Ende soll nicht als Klick zählen */
   var el = e.target.closest('[data-action]');
   if (!el) return;
   var fn = Actions[el.dataset.action];

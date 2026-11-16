@@ -60,6 +60,7 @@
         p.points = (p.cents !== undefined) ? (Math.floor(p.cents / 100) - ((p.cents % 100) / 10)) : 0;
         delete p.cents;
       }
+      if (p.fuss === undefined) p.fuss = '';
     });
     (s.catalog || []).forEach(function (c) {
       if (c.points === undefined) {

@@ -91,7 +91,7 @@ Routes['spieler'] = function (app) {
     html += '<button class="card row spread" data-action="pl.open" data-id="' + p.id + '">' +
       '<div class="row gap"><span class="nr-badge">' + esc(p.trikotNr || '–') + '</span>' +
       '<div><div class="strong">' + esc(p.name) + '</div>' +
-      '<div class="small muted">' + (p.positions || []).join(', ') + (teams ? ' · ' + teams : '') + '</div></div></div>' +
+      '<div class="small muted">' + (p.positions || []).join(', ') + (teams ? ' · ' + teams : '') + (p.fuss ? ' · Fuß: ' + esc(p.fuss) : '') + '</div></div></div>' +
       '<div class="row gap">' +
       (avg ? '<span class="pts-badge">' + avg.toFixed(1) + ' ⌀</span>' : '') +
       (st.spiele ? '<span class="small muted">' + st.goals + '⚽ ' + st.assists + '🅰️</span>' : '') +
@@ -125,7 +125,7 @@ Actions['pl.create'] = function () {
   if (!name) { toast('Bitte Namen eingeben'); return; }
   S.players.push({
     id: uid(), name: name, points: 0, trikotNr: document.getElementById('np-nr').value.trim(),
-    teamIds: [], positions: [],
+    fuss: '', teamIds: [], positions: [],
     skills: { schuss: 0, pass: 0, dribbling: 0, verteidigung: 0, technik: 0, kopfball: 0, kondition: 0, taktik: 0 },
     attrs: { groesse: '', gewicht: '', statur: '', staerken: '', probleme: '', einsetzbarkeit: '' },
     trainingCount: 0, trainingsLeistung: [], einsaetze: [], trikotHad: false, note: ''
@@ -155,6 +155,10 @@ function playerDetail(id) {
     '<div class="grow"><label>Größe (cm)</label><input id="pd-gro" inputmode="numeric" value="' + esc(p.attrs.groesse) + '"></div>' +
     '<div class="grow"><label>Gewicht (kg)</label><input id="pd-gew" inputmode="numeric" value="' + esc(p.attrs.gewicht) + '"></div></div>' +
     '<label>Statur</label><input id="pd-stat" value="' + esc(p.attrs.statur) + '" placeholder="z. B. kräftig, schnell, schlank">' +
+    '<label>Starker Fuß</label><div class="chip-row">' +
+    ['Links', 'Rechts', 'Beidfüßig'].map(function (f) {
+      return '<button class="chip' + (p.fuss === f ? ' active' : '') + '" data-action="pl.fuss" data-id="' + p.id + '" data-f="' + f + '">' + f + '</button>';
+    }).join('') + '</div>' +
     '<label>Positionen</label><div class="chip-row">' +
     POSITIONS.map(function (pos) {
       var on = (p.positions || []).indexOf(pos) >= 0;
@@ -269,6 +273,14 @@ function entwicklungHTML(p) {
   if (!lines.length) return '<p class="muted small">Noch keine Daten – Entwicklung erscheint automatisch mit Trainings & Spielen.</p>';
   return lines.join('');
 }
+
+Actions['pl.fuss'] = function (el) {
+  var p = playerById(el.dataset.id);
+  p.fuss = (p.fuss === el.dataset.f) ? '' : el.dataset.f;
+  save();
+  document.querySelectorAll('[data-action="pl.fuss"]').forEach(function (b) { b.classList.toggle('active', b.dataset.f === p.fuss); });
+  toast('Starker Fuß: ' + (p.fuss || 'nicht gesetzt'));
+};
 
 Actions['pl.pos'] = function (el) {
   var p = playerById(el.dataset.id);
@@ -423,6 +435,85 @@ var FORMATIONS = {
 };
 var POS_FAMILY = { TW: 'TW', LV: 'Abwehr', IV: 'Abwehr', RV: 'Abwehr', DM: 'Mittelfeld', ZM: 'Mittelfeld', OM: 'Mittelfeld', LM: 'Mittelfeld', RM: 'Mittelfeld', LA: 'Sturm', RA: 'Sturm', MS: 'Sturm' };
 
+/* ---------- Drag & Drop für Aufstellungs-Grafiken (Touch & Maus) ----------
+   Funktioniert im Taktik-Coach UND in der Spielvorbereitung:
+   - Spieler von Position A auf Position B ziehen = tauschen
+   - Bank-Spieler auf eine Position ziehen = einsetzen
+   - Tippen öffnet weiterhin das Auswahl-Menü */
+var pitchDrag = null;
+function pitchDragStart(el, x, y) {
+  pitchDrag = { el: el, ctx: el.dataset.dragctx, mode: el.dataset.drag || 'slot', pid: el.dataset.pid || null,
+    i: el.dataset.i !== undefined ? parseInt(el.dataset.i, 10) : null,
+    x0: x, y0: y, ghost: null, target: null };
+}
+function pitchDragLabel(d) {
+  if (d.mode === 'bench') { var s = d.el.querySelector('span'); return s ? s.textContent : 'Spieler'; }
+  var n = d.el.querySelector('.slot-name');
+  return n ? n.textContent : 'Spieler';
+}
+function pitchDragMove(x, y) {
+  if (!pitchDrag) return;
+  if (!pitchDrag.ghost && (Math.abs(x - pitchDrag.x0) > 8 || Math.abs(y - pitchDrag.y0) > 8)) {
+    var g = document.createElement('div');
+    g.className = 'drag-ghost';
+    g.textContent = pitchDragLabel(pitchDrag).trim();
+    document.body.appendChild(g);
+    pitchDrag.ghost = g;
+  }
+  if (pitchDrag.ghost) {
+    pitchDrag.ghost.style.left = x + 'px';
+    pitchDrag.ghost.style.top = y + 'px';
+    var t = document.elementFromPoint(x, y);
+    var slot = t && t.closest ? t.closest('.slot[data-dragctx="' + pitchDrag.ctx + '"]') : null;
+    if (pitchDrag.target && pitchDrag.target !== slot) pitchDrag.target.classList.remove('drop-target');
+    pitchDrag.target = slot;
+    if (slot) slot.classList.add('drop-target');
+  }
+}
+function pitchDragEnd(x, y) {
+  if (!pitchDrag) return;
+  var d = pitchDrag; pitchDrag = null;
+  if (d.ghost) d.ghost.remove();
+  if (d.target) d.target.classList.remove('drop-target');
+  if (!d.ghost || !d.target) return; /* kein Ziehen passiert -> normaler Klick */
+  window._dragConsumed = true;
+  var j = parseInt(d.target.dataset.i, 10);
+  if (d.mode === 'slot' && d.i !== null && d.i !== j) {
+    if (d.ctx === 'taktik') Actions['taktik.swap']({ dataset: { a: d.i, b: j } });
+    else Actions['match.swap']({ dataset: { id: d.el.dataset.id, a: d.i, b: j } });
+  } else if (d.mode === 'bench' && d.ctx === 'match') {
+    Actions['match.assign']({ dataset: { id: d.el.dataset.id, i: j, pid: d.pid } });
+  }
+}
+document.addEventListener('touchstart', function (e) {
+  var el = e.target && e.target.closest ? e.target.closest('[data-dragctx]') : null;
+  if (el && e.touches.length === 1) pitchDragStart(el, e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+document.addEventListener('touchmove', function (e) {
+  if (!pitchDrag) return;
+  if (pitchDrag.ghost) e.preventDefault();
+  pitchDragMove(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: false });
+document.addEventListener('touchend', function (e) {
+  if (!pitchDrag) return;
+  pitchDragEnd(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+});
+document.addEventListener('mousedown', function (e) {
+  var el = e.target && e.target.closest ? e.target.closest('[data-dragctx]') : null;
+  if (el) pitchDragStart(el, e.clientX, e.clientY);
+});
+document.addEventListener('mousemove', function (e) { if (pitchDrag) pitchDragMove(e.clientX, e.clientY); });
+document.addEventListener('mouseup', function (e) { if (pitchDrag) pitchDragEnd(e.clientX, e.clientY); });
+
+Actions['taktik.swap'] = function (el) {
+  ensureTaktikSlots();
+  var a = parseInt(el.dataset.a, 10), b = parseInt(el.dataset.b, 10);
+  var tmp = window._taktikSlots[a].playerId;
+  window._taktikSlots[a].playerId = window._taktikSlots[b].playerId;
+  window._taktikSlots[b].playerId = tmp;
+  save(); render(); toast('Positionen getauscht');
+};
+
 var taktikTeam = '';
 var taktikFormation = '';
 Actions['taktik.setTeam'] = function (el) {
@@ -453,7 +544,7 @@ Routes['taktik'] = function (app) {
     var assigned = window._taktikSlots[i] && window._taktikSlots[i].playerId ? playerById(window._taktikSlots[i].playerId) : null;
     var nr = assigned && assigned.trikotNr ? assigned.trikotNr : '';
     html += '<button class="slot' + (assigned ? ' filled' : '') + '" style="left:' + slot.x + '%;top:' + (100 - slot.y) + '%" ' +
-      'data-action="taktik.slot" data-i="' + i + '">' +
+      'data-action="taktik.slot" data-i="' + i + '" data-dragctx="taktik">' +
       '<span class="slot-pos">' + slot.pos + '</span>' +
       '<span class="slot-name">' + (assigned ? esc(assigned.name.split(' ')[0]) : '+') + '</span>' +
       (nr ? '<span class="slot-nr">' + esc(nr) + '</span>' : '') +

@@ -25,6 +25,7 @@ window.SEED = {
         name: 'Spieler ' + i,
         points: 0,
         trikotNr: '',
+        fuss: '',
         teamIds: [],
         positions: [],
         skills: { schuss: 0, pass: 0, dribbling: 0, verteidigung: 0, technik: 0, kopfball: 0, kondition: 0, taktik: 0 },
