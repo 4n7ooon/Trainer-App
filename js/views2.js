@@ -82,10 +82,8 @@ Routes['stats'] = function (app) {
     if (statsSort === 'name') return byName(a.p, b.p);
     return b[statsSort] - a[statsSort] || byName(a.p, b.p);
   });
-  html += '<div class="stat-head row"><span class="grow">Spieler</span><span>Tor</span><span>Ass</span><span>🟨</span><span>🟥</span><span>S11</span><span>Bank</span><span>S11%</span><span>ØMin</span></div>';
+  html += '<div class="stat-head row"><span class="grow">Spieler</span><span>Tor</span><span>Ass</span><span>🟨</span><span>🟥</span><span>S11</span><span>Bank</span><span>ØMin</span></div>';
   rows.forEach(function (r) {
-    var total = r.s11 + r.bank;
-    var pct = total ? Math.round(r.s11 / total * 100) + '%' : '–';
     var att = attStats(r.p);
     html += '<div class="stat-row row"><span class="grow">' + jersey(r.p, 'jersey-sm') + ' <b>' + esc(r.p.name) + '</b>' +
       (r.p.trikotNr ? ' <span class="muted small">#' + esc(r.p.trikotNr) + '</span>' : '') +
@@ -94,7 +92,7 @@ Routes['stats'] = function (app) {
       '<span' + (r.assist ? ' class="hot"' : '') + '>' + r.assist + '</span>' +
       '<span' + (r.gelb ? ' class="warn"' : '') + '>' + r.gelb + '</span>' +
       '<span' + (r.rot ? ' class="warn"' : '') + '>' + r.rot + '</span>' +
-      '<span>' + r.s11 + '</span><span>' + r.bank + '</span><span class="good">' + pct + '</span>' +
+      '<span>' + r.s11 + '</span><span>' + r.bank + '</span>' +
       '<span>' + (r.sp ? Math.round(r.min / r.sp) + '\u2032' : '\u2013') + '</span></div>';
   });
   if (!games) html += '<p class="muted">Noch keine Spiele – hier erscheinen Tore, Karten und S11-Quote, sobald du Spiele erfasst hast.</p>';
