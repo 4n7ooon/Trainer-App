@@ -1,20 +1,56 @@
 /* View: Spieltag – Spiele, Live-Ticker, Timer, 1-Klick-Events, Minuten-Übertragung */
 
+/* Wettbewerbe: zeitlos einstellbar pro Spiel */
+var MATCH_TYPES = [
+  { v: 'liga', n: 'Ligaspiel', icon: '⚽' },
+  { v: 'pokal', n: 'Pokalspiel', icon: '🏆' },
+  { v: 'freund', n: 'Freundschaftsspiel', icon: '🤝' }
+];
+function matchType(m) { return m.type || 'liga'; }
+function matchTypeObj(m) { var v = matchType(m); for (var i = 0; i < MATCH_TYPES.length; i++) if (MATCH_TYPES[i].v === v) return MATCH_TYPES[i]; return MATCH_TYPES[0]; }
+
+/* Auswahl-Kachel (Overlay): Trikot groß, Rückennummer klar darunter, dann Name */
+function pickTile(p) {
+  return jersey(p, 'jersey-md') +
+    (p && p.trikotNr ? '<span class="pick-nr">#' + esc(p.trikotNr) + '</span>' : '') +
+    '<b>' + esc((p ? p.name : '?').split(' ')[0]) + '</b>';
+}
+
 Routes['spieltag'] = function (app) {
-  var html = '<button class="btn primary" data-action="match.new">+ Neues Spiel</button><div class="spacer"></div>';
-  var matches = S.matches.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
-  if (!matches.length) html += '<p class="muted">Noch keine Spiele angelegt.</p>';
+  var fT = window._stT || 'all', fW = window._stW || 'all';
+  var html = '<button class="btn primary" data-action="match.new">+ Neues Spiel</button>';
+  html += '<div class="chip-row">' +
+    '<button class="chip' + (fT === 'all' ? ' active' : '') + '" data-action="match.filterTeam" data-v="all">Alle Teams</button>' +
+    S.teams.map(function (t) {
+      return '<button class="chip' + (fT === t.id ? ' active' : '') + '" data-action="match.filterTeam" data-v="' + t.id + '">' + esc(t.name) + '</button>';
+    }).join('') + '</div>';
+  html += '<div class="chip-row">' +
+    '<button class="chip' + (fW === 'all' ? ' active' : '') + '" data-action="match.filterType" data-v="all">Alle Spiele</button>' +
+    MATCH_TYPES.map(function (t) {
+      return '<button class="chip' + (fW === t.v ? ' active' : '') + '" data-action="match.filterType" data-v="' + t.v + '">' + t.icon + ' ' + t.n.replace('spiel', '') + '</button>';
+    }).join('') + '</div>';
+  html += '<div class="spacer"></div>';
+  var matches = S.matches.filter(function (m) {
+    if (fT !== 'all' && m.teamId !== fT) return false;
+    if (fW !== 'all' && matchType(m) !== fW) return false;
+    return true;
+  }).sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+  if (!matches.length) html += '<p class="muted">Keine Spiele für diesen Filter angelegt.</p>';
   matches.forEach(function (m) {
     var sc = matchScore(m);
-    var badge = m.status === 'live' ? '<span class="pts-badge hot">● LIVE</span>' :
+    var mt = matchTypeObj(m);
+    var live = m.status === 'live';
+    var badge = live ? '<span class="pts-badge hot">● LIVE</span>' :
       m.status === 'done' ? '<span class="pts-badge good">Fertig</span>' : '<span class="pts-badge">Vorbereitung</span>';
     html += '<button class="card row spread" data-action="match.open" data-id="' + m.id + '">' +
       '<div><div class="strong">' + esc(m.opponent || 'Gegner offen') + (m.home === 'away' ? ' (auswärts)' : ' (heim)') + '</div>' +
-      '<div class="small muted">' + fmtDate(m.date) + ' · ' + esc((teamById(m.teamId) || { name: '?' }).name) + ' · 2 × ' + m.halfLen + ' Min</div></div>' +
+      '<div class="small muted">' + fmtDate(m.date) + ' · ' + esc((teamById(m.teamId) || { name: '?' }).name) + ' · ' + mt.icon + ' ' + esc(mt.n.replace('spiel', '')) + '</div></div>' +
       '<div class="row gap">' + (m.status !== 'setup' ? '<span class="score">' + sc[0] + ':' + sc[1] + '</span>' : '') + badge + '</div></button>';
   });
   app.innerHTML = html;
 };
+Actions['match.filterTeam'] = function (el) { window._stT = el.dataset.v; render(); };
+Actions['match.filterType'] = function (el) { window._stW = el.dataset.v; render(); };
 
 function matchScore(m) {
   var g = 0, k = 0;
@@ -30,6 +66,10 @@ Actions['match.new'] = function () {
   var html = '<h3>Neues Spiel</h3>' +
     '<label>Gegner</label><input id="nm-opp" placeholder="z. B. FC Holzhausen">' +
     '<label>Datum</label><input type="date" id="nm-date" value="' + todayISO() + '">' +
+    '<label>Wettbewerb</label><div class="chip-row" id="nm-type">' +
+    MATCH_TYPES.map(function (t) {
+      return '<button class="chip' + (t.v === 'liga' ? ' active' : '') + '" data-action="match.setType" data-v="' + t.v + '">' + t.icon + ' ' + t.n + '</button>';
+    }).join('') + '</div>' +
     '<label>Heim/Auswärts</label><div class="seg" id="nm-home">' +
     '<button class="seg-btn active" data-action="match.setHome" data-v="home">Heim</button>' +
     '<button class="seg-btn" data-action="match.setHome" data-v="away">Auswärts</button></div>' +
@@ -42,7 +82,12 @@ Actions['match.new'] = function () {
     '<button class="btn primary" data-action="match.create">Anlegen</button>';
   openSheet(html);
   window._nmHome = 'home';
+  window._nmType = 'liga';
   window._nmTeam = S.teams.length ? S.teams[0].id : null;
+};
+Actions['match.setType'] = function (el) {
+  window._nmType = el.dataset.v;
+  document.querySelectorAll('[data-action="match.setType"]').forEach(function (b) { b.classList.toggle('active', b.dataset.v === el.dataset.v); });
 };
 Actions['match.setHome'] = function (el) {
   window._nmHome = el.dataset.v;
@@ -56,7 +101,7 @@ Actions['match.create'] = function () {
   var m = {
     id: uid(), date: document.getElementById('nm-date').value,
     opponent: document.getElementById('nm-opp').value.trim(),
-    home: window._nmHome, teamId: window._nmTeam,
+    home: window._nmHome, teamId: window._nmTeam, type: window._nmType || 'liga',
     halfLen: Math.max(5, parseInt(document.getElementById('nm-half').value, 10) || S.settings.halfLength || 35),
     status: 'setup', lineup: [], events: [], ratings: {}, minutes: {},
     squad: [], squadChosen: false, formation: '',
@@ -156,6 +201,10 @@ function matchSetup(m) {
     '<label>Gegner</label><input id="ms-opp" value="' + esc(m.opponent) + '">' +
     '<div class="row gap"><div class="grow"><label>Datum</label><input type="date" id="ms-date" value="' + esc(m.date) + '"></div>' +
     '<div class="grow"><label>Halbzeit (Min)</label><input type="number" id="ms-half" value="' + m.halfLen + '" min="5" max="60"></div></div>' +
+    '<label>Wettbewerb</label><div class="chip-row">' +
+    MATCH_TYPES.map(function (t) {
+      return '<button class="chip' + (matchType(m) === t.v ? ' active' : '') + '" data-action="match.editType" data-id="' + m.id + '" data-v="' + t.v + '">' + t.icon + ' ' + t.n + '</button>';
+    }).join('') + '</div>' +
     '<div class="spacer"></div>' +
     '<div class="chip-row">' + Object.keys(FORMATIONS[format]).map(function (f) {
       return '<button class="chip' + (m.formation === f ? ' active' : '') + '" data-action="match.setFormation" data-id="' + m.id + '" data-f="' + f + '">' + f + '</button>';
@@ -195,6 +244,12 @@ function matchSetup(m) {
     '<div class="spacer"></div><button class="btn danger small-btn" data-action="match.delete" data-id="' + m.id + '">Spiel löschen</button>';
   openSheet(html);
 }
+Actions['match.editType'] = function (el) {
+  var m = matchById(el.dataset.id);
+  if (!m) return;
+  m.type = el.dataset.v;
+  save(); matchSetup(m);
+};
 Actions['match.setFormation'] = function (el) {
   var m = matchById(el.dataset.id);
   var team = teamById(m.teamId);
@@ -386,6 +441,7 @@ function renderLive(m) {
     '<div class="sb-team">' + (m.home === 'home' ? esc(m.opponent) : esc(S.settings.clubName || 'Wir')) + '</div>' +
     '</div>' +
     '<div class="live-timer" id="live-timer">' + fmtClock(min, m.halfLen, m.clock.half) + '</div>' +
+    '<div class="small muted center">' + matchTypeObj(m).icon + ' ' + esc(matchTypeObj(m).n) + (m.home === 'away' ? ' · auswärts' : ' · heim') + '</div>' +
     '<div class="row gap">' +
     (m.clock.running
       ? '<button class="btn ghost grow" data-action="live.pause" data-id="' + m.id + '">⏸ Pause</button>'
@@ -484,7 +540,7 @@ Actions['live.goal'] = function (el) {
   openSheet('<h3>⚽ Wer hat das Tor geschossen?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.goalScorer" data-id="' + m.id + '" data-pid="' + p.id + '">' +
-        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b>' + '</button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.goalScorer'] = function (el) {
@@ -495,7 +551,7 @@ Actions['live.goalScorer'] = function (el) {
     '<button class="grid-pick-btn none" data-action="live.goalSave" data-id="' + m.id + '" data-pid="' + pid + '">Kein Assist</button>' +
     on.filter(function (p) { return p.id !== pid; }).map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.goalSave" data-id="' + m.id + '" data-pid="' + pid + '" data-a="' + p.id + '">' +
-        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b>' + '</button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.goalSave'] = function (el) {
@@ -516,7 +572,7 @@ Actions['live.gelb'] = function (el) {
   openSheet('<h3>🟨 Gelbe Karte: wer?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.cardSave" data-id="' + m.id + '" data-pid="' + p.id + '" data-k="gelb">' +
-        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.rot'] = function (el) {
@@ -525,7 +581,7 @@ Actions['live.rot'] = function (el) {
   openSheet('<h3>🟥 Rote Karte: wer?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.cardSave" data-id="' + m.id + '" data-pid="' + p.id + '" data-k="rot">' +
-        jersey(p, 'jersey-sm') + '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.cardSave'] = function (el) {
@@ -543,7 +599,7 @@ Actions['live.wechsel'] = function (el) {
   openSheet('<h3>🔄 Wer geht raus?</h3><div class="grid-pick">' +
     on.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.wechselOut" data-id="' + m.id + '" data-out="' + p.id + '">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.wechselOut'] = function (el) {
@@ -553,7 +609,7 @@ Actions['live.wechselOut'] = function (el) {
   openSheet('<h3>🔄 Wer kommt rein?</h3><div class="grid-pick">' +
     bench.map(function (p) {
       return '<button class="grid-pick-btn" data-action="live.wechselSave" data-id="' + m.id + '" data-out="' + out + '" data-in="' + p.id + '">' +
-        '<b>' + esc(p.name.split(' ')[0]) + '</b></button>';
+        pickTile(p) + '</button>';
     }).join('') + '</div>');
 };
 Actions['live.wechselSave'] = function (el) {
@@ -623,7 +679,8 @@ function writeMinutes(m) {
 }
 function ratingSheet(m) {
   var played = Object.keys(m.minutes || {}).map(playerById).filter(Boolean);
-  var html = '<h3>Spielnoten (optional)</h3><p class="small muted">Tippe für jeden Spieler die Note (1 = weltklasse … 5 = schwach). Überspringen ist ok.</p>';
+  var html = '<h3>Spielnoten (optional)</h3><p class="small muted">Tippe für jeden Spieler die Note (1 = weltklasse … 5 = schwach). Überspringen ist ok.</p>' +
+    '<p class="small muted">⚠️ Sterne immer <b>in Relation</b> sehen: vergleiche den Spieler mit seinem eigenen Niveau und mit der Mannschaft, in der er spielt (ein ★★★-Spieler in der C2 ist ein anderes Kaliber als in der C1). Die KI rechnet deshalb immer mit dem Team-Kontext.</p>';
   played.forEach(function (p) {
     html += '<div class="skill-row"><span>' + esc(p.name) + '</span><div class="stars">' +
       [1, 2, 3, 4, 5].map(function (v) {
@@ -662,7 +719,7 @@ function matchSummary(m) {
     '<div class="sb-team">' + (m.home === 'home' ? esc(S.settings.clubName || 'Wir') : esc(m.opponent)) + '</div>' +
     '<div class="sb-score">' + sc[0] + ' : ' + sc[1] + '</div>' +
     '<div class="sb-team">' + (m.home === 'home' ? esc(m.opponent) : esc(S.settings.clubName || 'Wir')) + '</div></div>' +
-    '<div class="small muted center">' + fmtDate(m.date) + ' · ' + (m.totalMin || '?') + ' Minuten</div><div class="spacer"></div>';
+    '<div class="small muted center">' + fmtDate(m.date) + ' · ' + matchTypeObj(m).icon + ' ' + esc(matchTypeObj(m).n) + ' · ' + (m.totalMin || '?') + ' Minuten</div><div class="spacer"></div>';
   html += '<h3 class="sub">Ticker</h3>';
   (m.events || []).slice().reverse().forEach(function (ev) { html += tickerRow(m, ev); });
   if (!(m.events || []).length) html += '<p class="muted small">Keine Ereignisse.</p>';

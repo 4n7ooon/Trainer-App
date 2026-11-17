@@ -27,10 +27,16 @@ function einsatzStats(p) {
 
 /* ================= STATISTIKEN ================= */
 var statsSort = 's11';
-function playerSeasonStats() {
+function statsMatchFilter(m, f) {
+  if (m.status === 'setup') return false;
+  if (f && f.team && f.team !== 'all' && m.teamId !== f.team) return false;
+  if (f && f.typ && f.typ !== 'all' && (m.type || 'liga') !== f.typ) return false;
+  return true;
+}
+function playerSeasonStats(filter) {
   var map = {};
   S.players.forEach(function (p) { map[p.id] = { p: p, tor: 0, assist: 0, gelb: 0, rot: 0, s11: 0, bank: 0 }; });
-  S.matches.forEach(function (m) {
+  S.matches.filter(function (m) { return statsMatchFilter(m, filter); }).forEach(function (m) {
     if (m.status === 'setup') return;
     (m.events || []).forEach(function (ev) {
       if (ev.type === 'tor') {
@@ -46,10 +52,21 @@ function playerSeasonStats() {
   return Object.keys(map).map(function (k) { return map[k]; });
 }
 Routes['stats'] = function (app) {
-  var rows = playerSeasonStats();
-  var teams = S.teams.map(function (t) { return esc(t.name); }).join(' / ');
-  var games = S.matches.filter(function (m) { return m.status !== 'setup'; }).length;
-  var html = '<div class="card hint-card">📊 Saison über ' + games + (games === 1 ? ' Spiel' : ' Spiele') + (teams ? ' · ' + teams : '') + '</div>';
+  var f = { team: window._statsT || 'all', typ: window._statsW || 'all' };
+  var rows = playerSeasonStats(f);
+  var games = S.matches.filter(function (m) { return statsMatchFilter(m, f); }).length;
+  var tName = f.team === 'all' ? 'Alle Teams' : ((teamById(f.team) || {}).name || '?');
+  var typNames = { all: 'Alle Wettbewerbe', liga: 'Liga', pokal: 'Pokal', freund: 'Freundschaftsspiele' };
+  var html = '<div class="card hint-card">📊 ' + esc(tName) + ' · ' + typNames[f.typ] + ' · über ' + games + (games === 1 ? ' Spiel' : ' Spiele') + '</div>';
+  html += '<div class="chip-row">' +
+    '<button class="chip' + (f.team === 'all' ? ' active' : '') + '" data-action="stats.filterTeam" data-v="all">Alle Teams</button>' +
+    S.teams.map(function (t) {
+      return '<button class="chip' + (f.team === t.id ? ' active' : '') + '" data-action="stats.filterTeam" data-v="' + t.id + '">' + esc(t.name) + '</button>';
+    }).join('') + '</div>';
+  html += '<div class="chip-row">' +
+    [['all', 'Alle'], ['liga', '⚽ Liga'], ['pokal', '🏆 Pokal'], ['freund', '🤝 Freund.']].map(function (o) {
+      return '<button class="chip' + (f.typ === o[0] ? ' active' : '') + '" data-action="stats.filterType" data-v="' + o[0] + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
   html += '<div class="chip-row">' +
     [['s11', 'S11'], ['tor', '⚽ Tore'], ['assist', '🅰️ Assists'], ['gelb', '🟨 Gelb'], ['rot', '🟥 Rot'], ['name', 'Name']].map(function (o) {
       return '<button class="chip' + (statsSort === o[0] ? ' active' : '') + '" data-action="stats.sort" data-k="' + o[0] + '">' + o[1] + '</button>';
@@ -76,6 +93,8 @@ Routes['stats'] = function (app) {
   app.innerHTML = html;
 };
 Actions['stats.sort'] = function (el) { statsSort = el.dataset.k; render(); };
+Actions['stats.filterTeam'] = function (el) { window._statsT = el.dataset.v; render(); };
+Actions['stats.filterType'] = function (el) { window._statsW = el.dataset.v; render(); };
 
 /* ================= SPIELER-DATENBANK ================= */
 Routes['spieler'] = function (app) {

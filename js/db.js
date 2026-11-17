@@ -76,6 +76,11 @@
       }
     });
 
+    /* Migration v2.1: Wettbewerb pro Spiel (Liga/Pokal/Freundschaft) */
+    (s.matches || []).forEach(function (m) {
+      if (!m.type) m.type = 'liga';
+    });
+
     /* Trikot-Liste: alle Spieler einmalig uebernehmen */
     if (!s.trikotSeeded) {
       (s.players || []).forEach(function (p) {

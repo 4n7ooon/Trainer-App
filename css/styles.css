@@ -242,14 +242,16 @@ button.card { display: block; }
 .tick-min { font-weight: 900; color: var(--club2); min-width: 34px; }
 .score { font-size: 18px; font-weight: 900; }
 
-.grid-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .grid-pick-btn {
   background: var(--card2); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px 10px; font-size: 16px;
-  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  border-radius: 14px; padding: 14px 8px 12px; font-size: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
 .grid-pick-btn:active { transform: scale(.96); }
 .grid-pick-btn.none { border-style: dashed; color: var(--muted); }
+.grid-pick-btn .jersey { width: 46px; height: 46px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
+.pick-nr { font-size: 12px; font-weight: 900; letter-spacing: .5px; color: var(--club2); line-height: 1; margin-top: -2px; }
 
 .chat-log { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; margin: 10px 0; }
 .chat-msg { border-radius: 14px; padding: 10px 14px; font-size: 15px; max-width: 88%; }
@@ -292,5 +294,6 @@ details summary { cursor: pointer; font-weight: 700; }
 /* ===== Trikot-Avatare ===== */
 .jersey { width: 28px; height: 28px; flex: 0 0 auto; display: inline-block; vertical-align: middle; }
 .jersey-sm { width: 20px; height: 20px; }
+.jersey-md { width: 46px; height: 46px; }
 .jersey-lg { width: 52px; height: 52px; }
 .player-main, .pick-row, .card.row, .chip, .stat-row { align-items: center; }

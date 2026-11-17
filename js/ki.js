@@ -188,6 +188,7 @@ window.KI = (function () {
       return st.spiele > 0 && st.minutes / st.spiele < 20;
     });
     if (benchWarm.length) tips.push('Wenig Spielzeit: ' + benchWarm.slice(0, 3).map(function (p) { return p.name; }).join(', ') + ' – über mehr Minuten oder klare Rolle nachdenken.');
+    tips.push('Hinweis zur Bewertung: Sterne immer in Relation sehen – zu seinem eigenen Niveau UND zur Mannschaft (ein ★★★-Spieler in der C2 ist ein anderes Kaliber als in der C1).');
     return tips;
   }
 

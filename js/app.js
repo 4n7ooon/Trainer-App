@@ -19,7 +19,7 @@ function jersey(p, cls) {
     '<path d="M23 3 L27 7 Q32 11 37 7 L41 3 L48 6 L61 15 L53 28 L46 24 L46 61 L18 61 L18 24 L11 28 L3 15 L16 6 Z" ' +
     'fill="' + c1 + '" stroke="rgba(0,0,0,.4)" stroke-width="2.5" stroke-linejoin="round"/>' +
     '<path d="M23 3 L27 7 Q32 11 37 7 L41 3" fill="none" stroke="rgba(0,0,0,.4)" stroke-width="2.5"/>' +
-    (nr ? '<text x="32" y="46" text-anchor="middle" font-size="24" font-weight="800" fill="#fff" font-family="system-ui,-apple-system,sans-serif">' + esc(nr) + '</text>' : '') +
+    (nr ? '<text x="32" y="43" text-anchor="middle" font-size="23" dominant-baseline="middle" font-weight="800" fill="#fff" font-family="system-ui,-apple-system,sans-serif">' + esc(nr) + '</text>' : '') +
     '</svg>';
 }
 function parsePts(str) {
