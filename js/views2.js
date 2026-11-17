@@ -35,7 +35,7 @@ function statsMatchFilter(m, f) {
 }
 function playerSeasonStats(filter) {
   var map = {};
-  S.players.forEach(function (p) { map[p.id] = { p: p, tor: 0, assist: 0, gelb: 0, rot: 0, s11: 0, bank: 0 }; });
+  S.players.forEach(function (p) { map[p.id] = { p: p, tor: 0, assist: 0, gelb: 0, rot: 0, s11: 0, bank: 0, min: 0, sp: 0 }; });
   S.matches.filter(function (m) { return statsMatchFilter(m, filter); }).forEach(function (m) {
     if (m.status === 'setup') return;
     (m.events || []).forEach(function (ev) {
@@ -48,6 +48,12 @@ function playerSeasonStats(filter) {
     var starters = (m.lineup || []).filter(function (s) { return s.playerId; }).map(function (s) { return s.playerId; });
     starters.forEach(function (id) { if (map[id]) map[id].s11++; });
     (m.squad || []).forEach(function (id) { if (map[id] && starters.indexOf(id) < 0) map[id].bank++; });
+    /* Spielminuten (werden beim Abpfiff ins Match geschrieben) */
+    Object.keys(m.minutes || {}).forEach(function (id) {
+      if (!map[id]) return;
+      var mins = m.minutes[id] || 0;
+      if (mins > 0 || starters.indexOf(id) >= 0) { map[id].min += mins; map[id].sp++; }
+    });
   });
   return Object.keys(map).map(function (k) { return map[k]; });
 }
@@ -58,6 +64,7 @@ Routes['stats'] = function (app) {
   var tName = f.team === 'all' ? 'Alle Teams' : ((teamById(f.team) || {}).name || '?');
   var typNames = { all: 'Alle Wettbewerbe', liga: 'Liga', pokal: 'Pokal', freund: 'Freundschaftsspiele' };
   var html = '<div class="card hint-card">📊 ' + esc(tName) + ' · ' + typNames[f.typ] + ' · über ' + games + (games === 1 ? ' Spiel' : ' Spiele') + '</div>';
+  html += '<div class="row gap wrap"><button class="btn ghost small-btn grow" data-action="stats.reset">↺ Alle Statistiken auf 0 setzen</button></div><div class="spacer"></div>';
   html += '<div class="chip-row">' +
     '<button class="chip' + (f.team === 'all' ? ' active' : '') + '" data-action="stats.filterTeam" data-v="all">Alle Teams</button>' +
     S.teams.map(function (t) {
@@ -68,14 +75,14 @@ Routes['stats'] = function (app) {
       return '<button class="chip' + (f.typ === o[0] ? ' active' : '') + '" data-action="stats.filterType" data-v="' + o[0] + '">' + o[1] + '</button>';
     }).join('') + '</div>';
   html += '<div class="chip-row">' +
-    [['s11', 'S11'], ['tor', '⚽ Tore'], ['assist', '🅰️ Assists'], ['gelb', '🟨 Gelb'], ['rot', '🟥 Rot'], ['name', 'Name']].map(function (o) {
+    [['s11', 'S11'], ['tor', '⚽ Tore'], ['assist', '🅰️ Assists'], ['gelb', '🟨 Gelb'], ['rot', '🟥 Rot'], ['min', '⏱ Ø Min'], ['name', 'Name']].map(function (o) {
       return '<button class="chip' + (statsSort === o[0] ? ' active' : '') + '" data-action="stats.sort" data-k="' + o[0] + '">' + o[1] + '</button>';
     }).join('') + '</div>';
   rows.sort(function (a, b) {
     if (statsSort === 'name') return byName(a.p, b.p);
     return b[statsSort] - a[statsSort] || byName(a.p, b.p);
   });
-  html += '<div class="stat-head row"><span class="grow">Spieler</span><span>Tor</span><span>Ass</span><span>🟨</span><span>🟥</span><span>S11</span><span>Bank</span><span>S11%</span></div>';
+  html += '<div class="stat-head row"><span class="grow">Spieler</span><span>Tor</span><span>Ass</span><span>🟨</span><span>🟥</span><span>S11</span><span>Bank</span><span>S11%</span><span>ØMin</span></div>';
   rows.forEach(function (r) {
     var total = r.s11 + r.bank;
     var pct = total ? Math.round(r.s11 / total * 100) + '%' : '–';
@@ -87,7 +94,8 @@ Routes['stats'] = function (app) {
       '<span' + (r.assist ? ' class="hot"' : '') + '>' + r.assist + '</span>' +
       '<span' + (r.gelb ? ' class="warn"' : '') + '>' + r.gelb + '</span>' +
       '<span' + (r.rot ? ' class="warn"' : '') + '>' + r.rot + '</span>' +
-      '<span>' + r.s11 + '</span><span>' + r.bank + '</span><span class="good">' + pct + '</span></div>';
+      '<span>' + r.s11 + '</span><span>' + r.bank + '</span><span class="good">' + pct + '</span>' +
+      '<span>' + (r.sp ? Math.round(r.min / r.sp) + '\u2032' : '\u2013') + '</span></div>';
   });
   if (!games) html += '<p class="muted">Noch keine Spiele – hier erscheinen Tore, Karten und S11-Quote, sobald du Spiele erfasst hast.</p>';
   app.innerHTML = html;
@@ -95,6 +103,22 @@ Routes['stats'] = function (app) {
 Actions['stats.sort'] = function (el) { statsSort = el.dataset.k; render(); };
 Actions['stats.filterTeam'] = function (el) { window._statsT = el.dataset.v; render(); };
 Actions['stats.filterType'] = function (el) { window._statsW = el.dataset.v; render(); };
+Actions['stats.reset'] = function () {
+  confirmDlg('Statistiken ALLER Spieler zurücksetzen? Minuten, Spiele, Trainings, Tore, Assists, Noten und Ticker-Ereignisse werden auf 0 gesetzt. Namen, Punkte, Bewertungen & Eigenschaften bleiben erhalten. (Filter oben bleiben aktiv.)', function () {
+    S.players.forEach(function (p) {
+      p.einsaetze = [];
+      p.trainingsLeistung = [];
+      p.trainingCount = 0;
+    });
+    (S.matches || []).forEach(function (m) {
+      m.events = [];
+      m.ratings = {};
+      m.minutes = {};
+      m.totalMin = 0;
+    });
+    save(); render(); toast('Alle Statistiken auf 0 gesetzt \u2713');
+  });
+};
 
 /* ================= SPIELER-DATENBANK ================= */
 Routes['spieler'] = function (app) {

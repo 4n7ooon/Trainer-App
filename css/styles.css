@@ -280,9 +280,13 @@ button.card { display: block; }
 details summary { cursor: pointer; font-weight: 700; }
 
 /* ===== Statistiken-Bereich ===== */
-.stat-head { font-size: 11px; color: var(--muted); padding: 4px 8px; gap: 8px; text-align: center; }
-.stat-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; margin-bottom: 6px; gap: 8px; text-align: center; font-size: 14px; }
-.stat-row .grow { text-align: left; }
+.stat-head { font-size: 10px; color: var(--muted); padding: 4px 8px; gap: 6px; text-align: center; }
+.stat-row { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; margin-bottom: 6px; gap: 6px; text-align: center; font-size: 13px; }
+/* Feste Spaltenbreiten: jede Zahl steht exakt unter ihrem Ereignis (Tor, 🟨, 🟥 …) */
+.stat-head > span, .stat-row > span { flex: 0 0 30px; min-width: 30px; max-width: 30px; text-align: center; }
+.stat-head .grow, .stat-row .grow { flex: 1 1 auto !important; min-width: 0; max-width: none; text-align: left; }
+.stat-row .grow { display: inline-flex; align-items: center; gap: 6px; overflow: hidden; }
+.stat-row .grow > b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-row .hot { color: var(--accent); font-weight: 700; }
 .stat-row .warn { color: var(--warn); font-weight: 700; }
 .stat-row .good { color: var(--accent); }
