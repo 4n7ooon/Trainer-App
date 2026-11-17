@@ -1,7 +1,8 @@
 /* Service Worker: App komplett offline verfügbar machen.
-   Alle Dateien werden gecacht; Updates werden im Hintergrund geladen
-   und beim nächsten App-Start aktiv. Daten liegen immer in localStorage/IndexedDB. */
-var CACHE = 'trainerapp-v1';
+   Network-first mit Cache-Fallback: mit Netz immer die neueste Version,
+   ohne Netz läuft alles aus dem Cache weiter. Daten liegen immer in
+   localStorage/IndexedDB und bleiben beim Update unberührt. */
+var CACHE = 'trainerapp-v3';
 var ASSETS = [
   './',
   './index.html',
@@ -31,19 +32,18 @@ self.addEventListener('activate', function (e) {
   );
 });
 
-/* Cache-first mit Hintergrund-Aktualisierung: funktioniert ohne Netz, aktualisiert sich mit Netz */
+/* Network-first: frische Datei aus dem Netz, sonst Cache (offline) */
 self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(function (hit) {
-      var net = fetch(e.request).then(function (res) {
-        if (res && res.status === 200) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
-        }
-        return res;
-      }).catch(function () { return hit; });
-      return hit || net;
+    fetch(e.request).then(function (res) {
+      if (res && res.status === 200) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
+      return res;
+    }).catch(function () {
+      return caches.match(e.request).then(function (hit) { return hit || caches.match('./index.html'); });
     })
   );
 });
